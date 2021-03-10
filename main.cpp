@@ -1,30 +1,13 @@
 #include <iostream>
-#include <istream>
-#include <string>
-#include <iomanip>
 
-#include <openssl/md5.h>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/filesystem.hpp>
 
+#include "hash.h"
 
 using namespace std;
 using namespace boost::iostreams;
 using namespace boost::filesystem;
-
-
-string md5_from_file(const string& path)
-{
-    unsigned char result[MD5_DIGEST_LENGTH];
-    mapped_file_source src(path);
-    MD5((unsigned char*)src.data(), src.size(), result);
-
-    ostringstream sout;
-    sout << hex << setfill('0');
-    for(auto c: result) sout << setw(2) << (int)c;
-
-    return sout.str();
-}
 
 int main(int argc, char *argv[])
 {
@@ -36,11 +19,14 @@ int main(int argc, char *argv[])
         if (is_regular_file(dir_i -> path()))
         {
             string file = dir_i -> path().string();
-            string hash = md5_from_file(file);
+            string hash = md5_of_file(file);
 
             cout << endl;
             cout << "File: " << file << endl;
             cout << "Hash: " << hash << endl;
         }
     }
+
+    cout << "Safe travels! Press anything to exit...";
+    getchar();
 }

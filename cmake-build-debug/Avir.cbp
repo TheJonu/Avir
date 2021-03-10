@@ -88,6 +88,12 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="D:/Projects/Avir/hash.cpp">
+			<Option target="Avir"/>
+		</Unit>
+		<Unit filename="D:/Projects/Avir/hash.h">
+			<Option target="Avir"/>
+		</Unit>
 		<Unit filename="D:/Projects/Avir/main.cpp">
 			<Option target="Avir"/>
 		</Unit>
