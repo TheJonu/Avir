@@ -15,5 +15,4 @@ Usage: avir [type] [path]
 
 #### Installation
 
-1. Navigate to Avir/build
-2. `sudo make install`
+Run the `installer.sh` with `sudo`.
