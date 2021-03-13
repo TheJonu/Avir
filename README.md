@@ -14,4 +14,4 @@ avir -dr <dirpath>: scan a directory recursively
 
 #### Installation
 
-Run the `installer.sh` with `sudo`.
+`sudo path_to_Avir/installer.sh`
