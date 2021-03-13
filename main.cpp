@@ -22,7 +22,8 @@ struct scan_result{
 command accept_input_command();
 string accept_input_file_path();
 string accept_input_directory_path();
-void scan_directory(path directory_path);
+void scan_directory_linearly(path directory_path);
+void scan_directory_recursively(path directory_path);
 scan_result scan_file(const path& file_path);
 string execute(const char* cmd);
 void close();
@@ -87,8 +88,48 @@ string accept_input_directory_path()
     return dir_path;
 }
 
-void scan_directory(path directory_path)
+void scan_directory_linearly(path directory_path)
 {
+    if(!is_directory(directory_path)){
+        cout << "That's not a directory." << endl;
+        return;
+    }
+
+    int file_count = 0;
+    for(directory_iterator iterator(directory_path); iterator != directory_iterator(); ++iterator)
+    {
+        if (is_regular_file(iterator -> path()))
+        {
+            file_count++;
+        }
+    }
+    cout << "Found " << file_count << " files at " << directory_path.string() << endl;
+
+    string yn;
+    cout << "Do you want to continue? [Y/n] ";
+    cin >> yn;
+    if(yn != "y" && yn != "Y"){
+        return;
+    }
+
+    int number = 0;
+    for(directory_iterator iterator(directory_path); iterator != directory_iterator(); ++iterator)
+    {
+        if (is_regular_file(iterator -> path()))
+        {
+            cout << "--- " << ++number << "/" << file_count << " --------------------------------" << endl;
+            scan_file(iterator -> path());
+        }
+    }
+}
+
+void scan_directory_recursively(path directory_path)
+{
+    if(!is_directory(directory_path)){
+        cout << "That's not a directory." << endl;
+        return;
+    }
+
     int file_count = 0;
     for(recursive_directory_iterator iterator(directory_path); iterator != recursive_directory_iterator(); ++iterator)
     {
@@ -98,6 +139,13 @@ void scan_directory(path directory_path)
         }
     }
     cout << "Found " << file_count << " files at " << directory_path.string() << endl;
+
+    string yn;
+    cout << "Do you want to continue? [Y/n] ";
+    cin >> yn;
+    if(yn != "y" && yn != "Y"){
+        return;
+    }
 
     int number = 0;
     for(recursive_directory_iterator iterator(directory_path); iterator != recursive_directory_iterator(); ++iterator)
@@ -112,6 +160,11 @@ void scan_directory(path directory_path)
 
 scan_result scan_file(const path& file_path)
 {
+    if(!is_regular_file(file_path)){
+        cout << "That's not a directory." << endl;
+        return scan_result{};
+    }
+
     cout << "File: \t" << file_path.filename().string() << endl;
     cout << "Path: \t" << file_path.parent_path().string() << endl;
 
@@ -153,34 +206,31 @@ string execute(const char* cmd)
     return result;
 }
 
-void close()
+void print_usage()
 {
-    cout << endl;
-    cout << "That's all! Thanks for using me!" << endl;
+    cout << "Usage: avir [type] [path]" << endl;
+    cout << "  -f <filepath>: scan a single file" << endl;
+    cout << "  -dl <dirpath>: scan a directory linearly" << endl;
+    cout << "  -dr <dirpath>: scan a directory recursively" << endl;
 }
 
 int main(int argc, char *argv[])
 {
-    command comm = accept_input_command();
-    switch(comm){
-        case scan_file_command:
-        {
-            string file_path = accept_input_file_path();
-            scan_file(canonical(file_path));
-            close();
-            break;
-        }
-        case scan_dir_command:
-        {
-            string dir_path = accept_input_directory_path();
-            scan_directory(canonical(dir_path));
-            close();
-            break;
-        }
-        case close_app_command:
-        {
-            close();
-            break;
-        }
+    if(argc <= 2){
+        print_usage();
+        return 0;
+    }
+
+    string arg1 = argv[1];
+    string arg2 = argv[2];
+
+    if(arg1 == "-f"){
+        scan_file(canonical(arg2));
+    }
+    else if(arg1 == "-dl"){
+        scan_directory_linearly(arg2);
+    }
+    else if(arg1 == "-dr"){
+        scan_directory_recursively(arg2);
     }
 }

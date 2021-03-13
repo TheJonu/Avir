@@ -3,7 +3,6 @@
 
 #include <openssl/md5.h>
 #include <boost/iostreams/device/mapped_file.hpp>
-//#include <boost/filesystem.hpp>
 
 #include "hash.h"
 
@@ -22,6 +21,6 @@ std::string md5_of_file(const std::string& path)
         return sout.str();
     }
     catch(const std::exception&) {
-        return "error / file not readable";
+        return "";
     }
 }

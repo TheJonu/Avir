@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.17)
-project(Avir)
+project(avir)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -19,3 +19,5 @@ add_executable(${PROJECT_NAME} main.cpp hash.cpp hash.h)
 
 target_link_libraries(${PROJECT_NAME} OpenSSL::SSL)
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+
+install (TARGETS avir DESTINATION bin)
