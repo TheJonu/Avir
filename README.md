@@ -7,9 +7,13 @@ It works by comparing MD5 hashes of your files with malware hashes provided by [
 ### Usage
 
 ```
-avir -f <filepath>: scan a single file
-avir -dl <dirpath>: scan a directory linearly
-avir -dr <dirpath>: scan a directory recursively
+Usage: avir [type] [option
+ Types:
+  -f  <path>:   scan a single file
+  -dl <path>:   scan a directory linearly
+  -dr <path>:   scan a directory recursively
+ Options:
+  -o <file>:    save output to file
 ```
 
 ### Installation

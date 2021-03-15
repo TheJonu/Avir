@@ -17,7 +17,7 @@ void print_usage()
     cout << "  -dl <path>:  scan a directory linearly" << endl;
     cout << "  -dr <path>:  scan a directory recursively" << endl;
     cout << " Options:" << endl;
-    cout << "  -o  <file>:  create output file" << endl;
+    cout << "  -o  <file>:  save output to file" << endl;
 }
 
 int main(int argc, char *argv[])
