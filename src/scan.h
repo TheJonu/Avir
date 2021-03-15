@@ -2,6 +2,7 @@
 #define AVIR_SCAN_H
 
 #include <iostream>
+#include <ctime>
 
 #include <boost/filesystem.hpp>
 
@@ -21,19 +22,20 @@ namespace Scan
         file_state state;
     };
 
-    struct scan_results{
-
-    };
-
     class scan{
     public:
 
-        boost::filesystem::path scanPath;
         scan_type scanType;
+        boost::filesystem::path scanPath;
+        boost::filesystem::path outputPath;
+
         scan();
         void begin();
 
     private:
+
+        //std::tm startTime;
+        //std::tm endTime;
 
         std::vector<boost::filesystem::path> files;
         std::vector<file_scan_result> fileScanResults;
@@ -42,11 +44,6 @@ namespace Scan
         void find_files_linear();
         void find_files_recursive();
 
-        void begin_scan_file();
-        void begin_scan_dir_linear();
-        void begin_scan_dir_recursive();
-
-        bool ask_to_continue();
         std::string execute(const char* cmd);
         file_scan_result scan_file(const boost::filesystem::path& path);
     };
