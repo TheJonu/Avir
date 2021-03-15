@@ -14,30 +14,101 @@ namespace Scan
 
     }
 
-    void scan::begin(){
-
+    void scan::begin()
+    {
         switch(scanType){
             case file_scan:
-                begin_scan_file();
+                cout << "Searching for file..." << endl;
+                find_file();
                 break;
             case dir_linear_scan:
-                begin_scan_dir_linear();
+                cout << "Searching for files linearly..." << endl;
+                find_files_linear();
                 break;
             case dir_recursive_scan:
-                begin_scan_dir_recursive();
+                cout << "Searching for files recursively..." << endl;
+                find_files_recursive();
                 break;
         }
-    }
 
-    bool scan::ask_to_continue()
-    {
+        if(files.size() == 0){
+            cout << "Found no files at " << scanPath << endl;
+        }
+
+        cout << "Found " << files.size() << " files at " << scanPath << endl;
+
         string yn;
         cout << "Do you want to continue? [Y/n] ";
         cin >> yn;
-        if(yn == "y" || yn == "Y"){
-            return true;
+        if(yn != "y" && yn != "Y"){
+            return;
         }
-        return false;
+
+        // hide the window here
+
+        int fileCount = files.size();
+        int i = 1;
+        for(auto & file : files){
+            cout << i << "/" << fileCount << "\t" << file.string() << endl;
+            fileScanResults.push_back(scan_file(file.string()));
+            i++;
+        }
+
+        int resultCount = fileScanResults.size();
+        int unreadable_count = 0;
+        int safe_count = 0;
+        vector<file_scan_result> unsafeResults;
+
+        for(auto & result : fileScanResults){
+            switch(result.state){
+                case is_not_readable:
+                    unreadable_count++;
+                    break;
+                case is_safe:
+                    safe_count++;
+                    break;
+                case is_not_safe:
+                    unsafeResults.push_back(result);
+                    break;
+            }
+        }
+
+        cout << endl;
+        cout << "File count: \t" << resultCount << endl;
+        cout << "   Safe: \t" << safe_count << endl;
+        cout << "   Unsafe: \t" << unsafeResults.size() << endl;
+        cout << "   Unreadable: \t" << unreadable_count << endl;
+    }
+
+    void scan::find_file()
+    {
+        if(is_regular_file(scanPath)){
+            files.push_back(scanPath);
+        }
+    }
+
+    void scan::find_files_linear()
+    {
+        for(directory_iterator iterator(scanPath); iterator != directory_iterator(); ++iterator)
+        {
+            path path = iterator -> path();
+            if (is_regular_file(path))
+            {
+                files.push_back(path);
+            }
+        }
+    }
+
+    void scan::find_files_recursive()
+    {
+        for(recursive_directory_iterator iterator(scanPath); iterator != recursive_directory_iterator(); ++iterator)
+        {
+            path path = iterator -> path();
+            if (is_regular_file(path))
+            {
+                files.push_back(path);
+            }
+        }
     }
 
     string scan::execute(const char* cmd)
@@ -54,84 +125,31 @@ namespace Scan
         return result;
     }
 
-    void scan::begin_scan_dir_linear()
+    file_scan_result scan::scan_file(const path& path)
     {
-        int file_count = 0;
-        for(directory_iterator iterator(scanPath); iterator != directory_iterator(); ++iterator)
-        {
-            if (is_regular_file(iterator -> path()))
-            {
-                file_count++;
-            }
+        file_scan_result result;
+
+        result.path = path;
+
+        result.hash = Hash::md5(path.string());
+
+        if(result.hash.empty()){
+            result.state = is_not_readable;
+            return result;
         }
-        cout << "Found " << file_count << " files at " << scanPath.string() << endl;
 
-        if(!ask_to_continue())
-            return;
-
-        int number = 0;
-        for(directory_iterator iterator(scanPath); iterator != directory_iterator(); ++iterator)
-        {
-            if (is_regular_file(iterator -> path()))
-            {
-                cout << "--- " << ++number << "/" << file_count << " --------------------------------" << endl;
-                scan_file(iterator -> path());
-            }
-        }
-    }
-
-    void scan::begin_scan_dir_recursive()
-    {
-        int file_count = 0;
-        for(recursive_directory_iterator iterator(scanPath); iterator != recursive_directory_iterator(); ++iterator)
-        {
-            if (is_regular_file(iterator -> path()))
-            {
-                file_count++;
-            }
-        }
-        cout << "Found " << file_count << " files at " << scanPath.string() << endl;
-
-        if(!ask_to_continue())
-            return;
-
-        int number = 0;
-        for(recursive_directory_iterator iterator(scanPath); iterator != recursive_directory_iterator(); ++iterator)
-        {
-            if (is_regular_file(iterator -> path()))
-            {
-                cout << "--- " << ++number << "/" << file_count << " --------------------------------" << endl;
-                scan_file(iterator -> path());
-            }
-        }
-    }
-
-    void scan::begin_scan_file()
-    {
-        scan_file(scanPath);
-    }
-
-    bool scan::scan_file(const path& path)
-    {
-        cout << "File: \t" << path.filename().string() << endl;
-
-        cout << "Path: \t" << path.parent_path().string() << endl;
-
-        string hash = Hash::md5(path.string());
-        cout << "Hash: \t" << hash << endl;
-
-        cout << "Safe: \t";
-        string requestStr = "whois -h hash.cymru.com " + hash;
+        string requestStr = "whois -h hash.cymru.com " + result.hash;
         const char* request = &requestStr[0];
+
         string response = execute(request);
-        int pos = response.find("NO_DATA");
-        if(pos != string::npos){
-            cout << "yes" << endl;
-            return false;
+
+        if(response.find("NO_DATA") != string::npos){
+            result.state = is_safe;
         }
         else{
-            cout << "NOT SAFE - MALWARE DETECTED" << endl;
-            return true;
+            result.state = is_not_safe;
         }
+
+        return result;
     }
 }

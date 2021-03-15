@@ -1,19 +1,12 @@
 #include <iostream>
-#include <cstdlib>
 #include <string>
 
 #include <boost/filesystem.hpp>
 
-#include "hash.h"
 #include "scan.h"
 
 using namespace std;
 using namespace boost::filesystem;
-
-void scan_directory_linearly(path directory_path);
-void scan_directory_recursively(path directory_path);
-bool scan_file(const path& file_path);
-string execute(const char* cmd);
 
 void print_usage()
 {
@@ -33,27 +26,24 @@ int main(int argc, char *argv[])
     string arg1 = argv[1];
     string arg2 = argv[2];
 
-    path path = canonical(arg2);
-
     Scan::scan scan;
-    scan.scanPath = path;
 
     if(arg1 == "-f"){
-        if(!is_regular_file(path)){
+        if(!is_regular_file(arg2)){
             cout << "That's not a file.";
             return 1;
         }
         scan.scanType = Scan::file_scan;
     }
     else if(arg1 == "-dl"){
-        if(!is_directory(path)){
+        if(!is_directory(arg2)){
             cout << "That's not a directory." << endl;
             return 1;
         }
         scan.scanType = Scan::dir_linear_scan;
     }
     else if(arg1 == "-dr"){
-        if(!is_directory(path)){
+        if(!is_directory(arg2)){
             cout << "That's not a directory." << endl;
             return 1;
         }
@@ -64,5 +54,6 @@ int main(int argc, char *argv[])
         print_usage();
     }
 
+    scan.scanPath = canonical(arg2);
     scan.begin();
 }
