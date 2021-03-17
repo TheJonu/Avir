@@ -2,7 +2,7 @@
 
 A very simple antivirus for Linux systems.
 
-It works by comparing MD5 hashes of your filePaths with malware hashes provided by [Team Cymru](https://team-cymru.com/mhr).
+It works by comparing MD5 hashes of your files with malware hashes provided by [Team Cymru](https://team-cymru.com/mhr).
 
 ### Usage
 
