@@ -26,6 +26,7 @@ namespace Scan
     public:
 
         scan_type scanType;
+        std::vector<boost::filesystem::path> filePaths;
         boost::filesystem::path scanPath;
         boost::filesystem::path outputPath;
 
@@ -34,15 +35,7 @@ namespace Scan
 
     private:
 
-        //std::tm startTime;
-        //std::tm endTime;
-
-        std::vector<boost::filesystem::path> files;
         std::vector<file_scan_result> fileScanResults;
-
-        void find_file();
-        void find_files_linear();
-        void find_files_recursive();
 
         std::string execute(const char* cmd);
         file_scan_result scan_file(const boost::filesystem::path& path);

@@ -2,12 +2,12 @@
 
 A very simple antivirus for Linux systems.
 
-It works by comparing MD5 hashes of your files with malware hashes provided by [Team Cymru](https://team-cymru.com/mhr).
+It works by comparing MD5 hashes of your filePaths with malware hashes provided by [Team Cymru](https://team-cymru.com/mhr).
 
 ### Usage
 
 ```
-Usage: avir [type] [option
+Usage: avir [type] [option]
  Types:
   -f  <path>:   scan a single file
   -dl <path>:   scan a directory linearly
