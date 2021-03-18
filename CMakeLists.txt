@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 #set(OPENSSL_USE_STATIC_LIBS TRUE)
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+
 find_package(OpenSSL REQUIRED)
 find_package(Boost COMPONENTS iostreams filesystem REQUIRED)
 

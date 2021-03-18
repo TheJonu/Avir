@@ -32,13 +32,6 @@ namespace Scan
 
         scan();
         void begin();
-
-    private:
-
-        std::vector<file_scan_result> fileScanResults;
-
-        std::string execute(const char* cmd);
-        file_scan_result scan_file(const boost::filesystem::path& path);
     };
 }
 

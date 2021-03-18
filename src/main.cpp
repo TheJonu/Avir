@@ -144,8 +144,10 @@ int main(int argc, char *argv[])
     }
 
     if(scanType == Scan::dir_linear_scan || scanType == Scan::dir_recursive_scan){
+
         if(filePaths.empty()){
             cout << "Found no files at " << scanPath << endl;
+            return 0;
         }
 
         cout << "Found " << filePaths.size() << " files at " << scanPath << endl;
