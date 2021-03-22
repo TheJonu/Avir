@@ -3,12 +3,10 @@ project(avir)
 
 set(CMAKE_CXX_STANDARD 14)
 
-#set(Boost_INCLUDE_DIR "C:\\Program Files\\boost_1_75_0")
-#set(Boost_LIBRARY_DIR "C:\\Program Files\\boost_1_75_0\\stage\\lib")
-
-#set(OPENSSL_USE_STATIC_LIBS TRUE)
-
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+set(Boost_USE_STATIC_LIBS   ON)
 
 find_package(OpenSSL REQUIRED)
 find_package(Boost COMPONENTS iostreams filesystem REQUIRED)

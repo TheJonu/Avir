@@ -13,6 +13,8 @@ using namespace boost::filesystem;
 
 namespace Scan
 {
+    //const path HASH_BASE = "~/Avir/hashbase.txt";
+
     // executes a command in another process
     string execute(const char* cmd)
     {
@@ -29,6 +31,20 @@ namespace Scan
         return result;
     }
 
+    // check file safety online
+    bool check_online(string & hash)
+    {
+        string requestStr = "whois -h hash.cymru.com " + hash;
+        string response = execute(&requestStr[0]);
+        return response.find("NO_DATA") != string::npos;
+    }
+
+    // check file safety locally
+    bool check_local(string & hash)
+    {
+        return true;
+    }
+
     // scans a single file
     file_scan_result scan_file(const path& path)
     {
@@ -43,12 +59,7 @@ namespace Scan
             return result;
         }
 
-        string requestStr = "whois -h hash.cymru.com " + result.hash;
-        const char* request = &requestStr[0];
-
-        string response = execute(request);
-
-        if(response.find("NO_DATA") != string::npos){
+        if(check_online(result.hash) && check_local(result.hash)){
             result.state = is_safe;
         }
         else{
