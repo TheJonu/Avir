@@ -18,7 +18,7 @@ void print_usage()
     cout << "  -dl <path>:  scan a directory linearly" << endl;
     cout << "  -dr <path>:  scan a directory recursively" << endl;
     cout << " Options:" << endl;
-    cout << "  -o  <file>:  save output to file" << endl;
+    cout << "  -o  <file>:  specify an output file" << endl;
 }
 
 void find_file(vector<path>& filePaths, path& scanPath)
