@@ -13,7 +13,7 @@ Usage: avir [type] [option]
   -dl <path>:   scan a directory linearly
   -dr <path>:   scan a directory recursively
  Options:
-  -o <file>:    save output to file
+  -o  <file>:    save output to file
 ```
 
 ### Installation

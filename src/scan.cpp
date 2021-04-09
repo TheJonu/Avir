@@ -13,7 +13,10 @@ using namespace boost::filesystem;
 
 namespace Scan
 {
-    //const path HASH_BASE = "~/Avir/hashbase.txt";
+    path hashBasePath;
+    path resultsPath;
+
+    vector<string> hashBase;
 
     // executes a command in another process
     string execute(const char* cmd)
@@ -31,7 +34,7 @@ namespace Scan
         return result;
     }
 
-    // check file safety online
+    // check file safety online // true if safe
     bool check_online(string & hash)
     {
         string requestStr = "whois -h hash.cymru.com " + hash;
@@ -39,10 +42,26 @@ namespace Scan
         return response.find("NO_DATA") != string::npos;
     }
 
-    // check file safety locally
-    bool check_local(string & hash)
+    // check file safety locally // true if safe
+    bool check_local(string & fileHash)
     {
+        for(const string& hash : hashBase){
+            if(hash == fileHash){
+                return false;
+            }
+        }
         return true;
+    }
+
+    // load hash base file
+    void load_hash_base()
+    {
+        std::ifstream inStream(hashBasePath.string());
+        string hash;
+
+        while(getline(inStream, hash)){
+            hashBase.push_back(hash);
+        }
     }
 
     // scans a single file
@@ -75,9 +94,29 @@ namespace Scan
     // main scan function
     void scan::begin()
     {
-        // start
+        // start clock
 
         auto start = std::chrono::system_clock::now();
+
+        // determine directories
+
+        char const *home = getenv("HOME");
+
+        string homeString(home);
+        string avirString = homeString + "/Avir";
+
+        string hashBaseString = avirString + "/hashbase.txt";
+        string resultsString = avirString + "/results";
+
+        create_directories(avirString);
+        create_directories(resultsString);
+
+        hashBasePath = hashBaseString;
+        resultsPath = resultsString;
+
+        // load local hash base
+
+        load_hash_base();
 
         // begin asynchronous scanning
 
@@ -102,9 +141,10 @@ namespace Scan
         // filter results
 
         int resultCount = results.size();
-        int safe_count = 0;
-        vector<file_scan_result> unreadableResults;
+        //int safe_count = 0;
         vector<file_scan_result> unsafeResults;
+        vector<file_scan_result> unreadableResults;
+        vector<file_scan_result> safeResults;
 
         for(auto & result : results){
             switch(result.state){
@@ -115,15 +155,10 @@ namespace Scan
                     unsafeResults.push_back(result);
                     break;
                 case is_safe:
-                    safe_count++;
+                    //safe_count++;
+                    safeResults.push_back(result);
                     break;
             }
-        }
-
-        // return if no output specified
-
-        if(outputPath.empty()){
-            return;
         }
 
         // calculate stuff
@@ -137,6 +172,12 @@ namespace Scan
             case file_scan: scanTypeName = "single file scan"; break;
             case dir_linear_scan: scanTypeName = "linear directory scan"; break;
             case dir_recursive_scan: scanTypeName = "recursive directory scan"; break;
+        }
+
+        // if no output specified, create default
+
+        if(outputPath.empty()){
+            outputPath = resultsPath.string() + "/scan_" + to_string(start_time) + ".txt";
         }
 
         // generate output file
@@ -153,13 +194,13 @@ namespace Scan
         outStream << "Scan type: \t" << scanTypeName << endl;
         outStream << " --- " << endl;
         outStream << "File count: \t" << resultCount << endl;
-        outStream << "  Safe: \t" << safe_count << endl;
         outStream << "  Unsafe: \t" << unsafeResults.size() << endl;
         outStream << "  Unreadable: \t" << unreadableResults.size() << endl;
+        outStream << "  Safe: \t" << safeResults.size() << endl;
 
         if(!unsafeResults.empty()){
             outStream << " --- " << endl;
-            outStream << "Unsafe files: \t" << endl;
+            outStream << "UNSAFE FILES: \t" << endl;
             for(auto & r : unsafeResults){
                 outStream << "  " << r.path.string() << endl;
             }
@@ -169,6 +210,14 @@ namespace Scan
             outStream << " --- " << endl;
             outStream << "Unreadable files: \t" << endl;
             for(auto & r : unreadableResults){
+                outStream << "  " << r.path.string() << endl;
+            }
+        }
+
+        if(!unreadableResults.empty()){
+            outStream << " --- " << endl;
+            outStream << "Safe files: \t" << endl;
+            for(auto & r : safeResults){
                 outStream << "  " << r.path.string() << endl;
             }
         }
