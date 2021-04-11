@@ -1,9 +1,10 @@
 #include <iostream>
 #include <chrono>
 #include <ctime>
+#include <future>
+#include <tgmath.h>
 
 #include <boost/filesystem.hpp>
-#include <future>
 
 #include "scan.h"
 #include "hash.h"
@@ -13,15 +14,23 @@ using namespace boost::filesystem;
 
 namespace Scan
 {
-    path hashBasePath;
-    path resultsPath;
+    scan_status scanStatus;
+
+    vector<file_scan_result> results;
+    vector<file_scan_result> unsafeResults;
+    vector<file_scan_result> unreadableResults;
+    vector<file_scan_result> safeResults;
 
     vector<string> hashBase;
+
+    time_t start_time;
+    chrono::duration<double> elapsed_seconds;
+
 
     // executes a command in another process
     string execute(const char* cmd)
     {
-        array<char, 128> buffer;
+        array<char, 128> buffer{};
         string result;
 
         unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
@@ -54,9 +63,9 @@ namespace Scan
     }
 
     // load hash base file
-    void load_hash_base()
+    void load_hash_base(const path& path)
     {
-        std::ifstream inStream(hashBasePath.string());
+        std::ifstream inStream(path.string());
         string hash;
 
         while(getline(inStream, hash)){
@@ -78,7 +87,12 @@ namespace Scan
             return result;
         }
 
-        if(check_online(result.hash) && check_local(result.hash)){
+        //bool onlineSafe = check_online(result.hash);
+        //bool localSafe = check_local(result.hash);
+
+        bool safe = check_local(result.hash);
+
+        if(safe){
             result.state = is_safe;
         }
         else{
@@ -88,112 +102,42 @@ namespace Scan
         return result;
     }
 
-    // empty constructor
-    scan::scan(){}
-
-    // main scan function
-    void scan::begin()
+    string scan::get_scan_type_name() const
     {
-        // start clock
-
-        auto start = std::chrono::system_clock::now();
-
-        // determine directories
-
-        char const *home = getenv("HOME");
-
-        string homeString(home);
-        string avirString = homeString + "/Avir";
-
-        string hashBaseString = avirString + "/hashbase.txt";
-        string resultsString = avirString + "/results";
-
-        create_directories(avirString);
-        create_directories(resultsString);
-
-        hashBasePath = hashBaseString;
-        resultsPath = resultsString;
-
-        // load local hash base
-
-        load_hash_base();
-
-        // begin asynchronous scanning
-
-        vector<file_scan_result> results;
-        results.reserve(filePaths.size());
-
-        vector<future<file_scan_result>> futures;
-        futures.reserve(filePaths.size());
-
-        for(auto & file : filePaths){
-            futures.push_back(async(launch::async, scan_file, file));
-        }
-
-        for(auto & e : futures){
-            results.push_back(e.get());
-        }
-
-        // scanning ended
-
-        auto end = std::chrono::system_clock::now();
-
-        // filter results
-
-        int resultCount = results.size();
-        //int safe_count = 0;
-        vector<file_scan_result> unsafeResults;
-        vector<file_scan_result> unreadableResults;
-        vector<file_scan_result> safeResults;
-
-        for(auto & result : results){
-            switch(result.state){
-                case is_not_readable:
-                    unreadableResults.push_back(result);
-                    break;
-                case is_not_safe:
-                    unsafeResults.push_back(result);
-                    break;
-                case is_safe:
-                    //safe_count++;
-                    safeResults.push_back(result);
-                    break;
-            }
-        }
-
-        // calculate stuff
-
-        time_t start_time = chrono::system_clock::to_time_t(start);
-        time_t end_time = chrono::system_clock::to_time_t(end);
-        chrono::duration<double> elapsed_seconds = end-start;
-
-        string scanTypeName;
         switch(scanType){
-            case file_scan: scanTypeName = "single file scan"; break;
-            case dir_linear_scan: scanTypeName = "linear directory scan"; break;
-            case dir_recursive_scan: scanTypeName = "recursive directory scan"; break;
+            case file_scan: return "single file scan";
+            case dir_linear_scan: return "linear directory scan";
+            case dir_recursive_scan: return "recursive directory scan";
         }
+        return "";
+    }
 
-        // if no output specified, create default
-
-        if(outputPath.empty()){
-            outputPath = resultsPath.string() + "/scan_" + to_string(start_time) + ".txt";
+    string scan::get_scan_status_name() const
+    {
+        switch(scanStatus){
+            case just_started: return "just started";
+            case in_progress: {
+                return "in progress (" + to_string(results.size() / filePaths.size() * 100) + "%)";
+            };
+            case completed: return "completed";
         }
+        return "";
+    }
 
-        // generate output file
-
+    void scan::print_result()
+    {
         boost::filesystem::ofstream outStream(outputPath);
 
         outStream << "AVIR SCAN REPORT" << endl;
         outStream << " --- " << endl;
         outStream << "Start time: \t" << ctime(&start_time);
-        outStream << "End time: \t" << ctime(&end_time);
         outStream << "Elapsed: \t" << elapsed_seconds.count() << " seconds" << endl;
+        outStream << "Status: \t" << get_scan_status_name() << endl;
         outStream << " --- " << endl;
         outStream << "Scan path: \t" << scanPath.string() << endl;
-        outStream << "Scan type: \t" << scanTypeName << endl;
+        outStream << "Scan type: \t" << get_scan_type_name() << endl;
         outStream << " --- " << endl;
-        outStream << "File count: \t" << resultCount << endl;
+        outStream << "File count: \t" << results.size() << endl;
         outStream << "  Unsafe: \t" << unsafeResults.size() << endl;
         outStream << "  Unreadable: \t" << unreadableResults.size() << endl;
         outStream << "  Safe: \t" << safeResults.size() << endl;
@@ -214,15 +158,101 @@ namespace Scan
             }
         }
 
-        if(!unreadableResults.empty()){
+        /*
+        if(!safeResults.empty()){
             outStream << " --- " << endl;
             outStream << "Safe files: \t" << endl;
             for(auto & r : safeResults){
                 outStream << "  " << r.path.string() << endl;
             }
         }
+         */
 
         outStream << endl;
         outStream.close();
+    }
+
+    // empty constructor
+    scan::scan(){}
+
+    // main scan function
+    void scan::begin()
+    {
+        // start clock
+
+        auto start = std::chrono::system_clock::now();
+        start_time = chrono::system_clock::to_time_t(start);
+
+        // load local hash base
+
+        load_hash_base(hashbasePath);
+
+        // print result at beginning
+
+        scanStatus = just_started;
+        print_result();
+
+        // begin scanning
+
+        scanStatus = in_progress;
+        results.reserve(filePaths.size());
+
+        // scan online
+        /*
+        vector<future<file_scan_result>> futures;
+        futures.reserve(filePaths.size());
+
+        for(auto & file : filePaths){
+            futures.push_back(async(launch::async, scan_file, file));
+        }
+
+        double last_print_time = 0;
+
+        for(auto & e : futures){
+            file_scan_result result = e.get();
+            results.push_back(result);
+
+            auto now = std::chrono::system_clock::now();
+            elapsed_seconds = now - start;
+
+            if(elapsed_seconds.count() - last_print_time > 0.5f){
+                cout << "Print result at " << elapsed_seconds.count() << " seconds";
+
+                last_print_time = elapsed_seconds.count();
+
+                switch(result.state){
+                    case is_not_readable: unreadableResults.push_back(result); break;
+                    case is_not_safe: unsafeResults.push_back(result); break;
+                    case is_safe: safeResults.push_back(result); break;
+                }
+
+                print_result();
+            }
+        }
+        */
+
+        // scan locally
+
+        for(auto & file : filePaths){
+
+            file_scan_result result = scan_file(file);
+
+            results.push_back(result);
+
+            switch(result.state){
+                case is_not_readable: unreadableResults.push_back(result); break;
+                case is_not_safe: unsafeResults.push_back(result); break;
+                case is_safe: safeResults.push_back(result); break;
+            }
+        }
+
+        // print result at the end
+
+        auto end = std::chrono::system_clock::now();
+        elapsed_seconds = end - start;
+
+        scanStatus = completed;
+
+        print_result();
     }
 }

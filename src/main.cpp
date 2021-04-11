@@ -54,7 +54,27 @@ void find_files_recursive(vector<path>& filePaths, path& scanPath)
 
 int main(int argc, char *argv[])
 {
-    // determine arguments
+    // get start time
+
+    auto start = std::chrono::system_clock::now();
+    time_t start_time = chrono::system_clock::to_time_t(start);
+
+    // determine home dir paths
+
+    char const *home = getenv("HOME");
+    string homeString(home);
+
+    string avirString = homeString + "/Avir";
+    string hashbaseString = avirString + "/hashbase.txt";
+    string resultsString = avirString + "/results";
+
+    create_directories(avirString);
+    create_directories(resultsString);
+
+    path hashbasePath = canonical(hashbaseString);
+    path outputPath = resultsString + "/scan_" + to_string(start_time) + ".txt";
+
+    // determine input arguments
 
     if(argc == 1){
         print_usage();
@@ -67,7 +87,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // determine type and scan path
+    // determine args 1 and 2 - type and scan path
 
     string arg1 = argv[1];
     string arg2 = argv[2];
@@ -106,8 +126,6 @@ int main(int argc, char *argv[])
 
     // determine options
 
-    path outputPath;
-
     if(argc >= 5){
         string arg3 = argv[3];
         string arg4 = argv[4];
@@ -143,6 +161,8 @@ int main(int argc, char *argv[])
             break;
     }
 
+    // directory scan prompt
+
     if(scanType == Scan::dir_linear_scan || scanType == Scan::dir_recursive_scan){
 
         if(filePaths.empty()){
@@ -160,7 +180,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    //pid_t forkPid = fork();
+    // begin scan
 
     switch(fork()){
         case -1: {
@@ -172,12 +192,14 @@ int main(int argc, char *argv[])
             scan.scanType = scanType;
             scan.scanPath = scanPath;
             scan.filePaths = filePaths;
+            scan.hashbasePath = hashbasePath;
             scan.outputPath = outputPath;
             scan.begin();
             return 0;
         }
         default: {
             cout << "Scan started." << endl;
+            cout << "Result file:\t" << outputPath.string() << endl;
         }
     }
 }
