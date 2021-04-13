@@ -28,15 +28,16 @@ namespace Scan
 
     class scan{
     private:
-        void print_result();
+        void print_result_to_files();
         std::string get_scan_type_name() const;
         std::string get_scan_status_name() const;
     public:
         scan_type scanType;
+        bool scanOnline;
         std::vector<boost::filesystem::path> filePaths;
         boost::filesystem::path scanPath;
-        boost::filesystem::path hashbasePath;
-        boost::filesystem::path outputPath;
+        std::vector<boost::filesystem::path> hashBasePaths;
+        std::vector<boost::filesystem::path> outputPaths;
         scan();
         void begin();
     };

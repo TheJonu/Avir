@@ -21,7 +21,7 @@ namespace Scan
     vector<file_scan_result> unreadableResults;
     vector<file_scan_result> safeResults;
 
-    vector<string> hashBase;
+    //vector<string> hashBase;
 
     time_t start_time;
     chrono::duration<double> elapsed_seconds;
@@ -43,16 +43,16 @@ namespace Scan
         return result;
     }
 
-    // check file safety online // true if safe
-    bool check_online(string & hash)
+    // check if file is safe online
+    bool check_if_safe_online(string & fileHash)
     {
-        string requestStr = "whois -h hash.cymru.com " + hash;
+        string requestStr = "whois -h fileHash.cymru.com " + fileHash;
         string response = execute(&requestStr[0]);
         return response.find("NO_DATA") != string::npos;
     }
 
-    // check file safety locally // true if safe
-    bool check_local(string & fileHash)
+    // check if file is safe in local hash base
+    bool check_if_safe_locally(string & fileHash, vector<string>& hashBase)
     {
         for(const string& hash : hashBase){
             if(hash == fileHash){
@@ -63,41 +63,48 @@ namespace Scan
     }
 
     // load hash base file
-    void load_hash_base(const path& path)
+    vector<string> load_hash_base(const vector<path>& paths)
     {
-        std::ifstream inStream(path.string());
-        string hash;
+        vector<string> hashBase;
 
-        while(getline(inStream, hash)){
-            hashBase.push_back(hash);
+        for(const path& path : paths){
+            std::ifstream inStream(path.string());
+            string hash;
+
+            while(getline(inStream, hash)){
+                hashBase.push_back(hash);
+            }
         }
+
+        return hashBase;
     }
 
     // scans a single file
-    file_scan_result scan_file(const path& path)
+    file_scan_result scan_file(path& filePath, vector<string>& hashBase, bool check_online)
     {
         file_scan_result result;
 
-        result.path = path;
+        result.path = filePath;
 
-        result.hash = Hash::md5(path.string());
+        result.hash = Hash::md5(filePath.string());
 
         if(result.hash.empty()){
             result.state = is_not_readable;
             return result;
         }
 
-        //bool onlineSafe = check_online(result.hash);
-        //bool localSafe = check_local(result.hash);
+        bool safe = true;
 
-        bool safe = check_local(result.hash);
+        if(!check_if_safe_locally(result.hash, hashBase))
+            safe = false;
 
-        if(safe){
+        if(check_online && !check_if_safe_online(result.hash))
+            safe = false;
+
+        if (safe)
             result.state = is_safe;
-        }
-        else{
+        else
             result.state = is_not_safe;
-        }
 
         return result;
     }
@@ -124,56 +131,50 @@ namespace Scan
         return "";
     }
 
-    void scan::print_result()
+    void scan::print_result_to_files()
     {
-        boost::filesystem::ofstream outStream(outputPath);
+        stringstream resultStringStream;
 
-        outStream << "AVIR SCAN REPORT" << endl;
-        outStream << " --- " << endl;
-        outStream << "Start time: \t" << ctime(&start_time);
-        outStream << "Elapsed: \t" << elapsed_seconds.count() << " seconds" << endl;
-        outStream << "Status: \t" << get_scan_status_name() << endl;
-        outStream << " --- " << endl;
-        outStream << "Scan path: \t" << scanPath.string() << endl;
-        outStream << "Scan type: \t" << get_scan_type_name() << endl;
-        outStream << " --- " << endl;
-        outStream << "File count: \t" << results.size() << endl;
-        outStream << "  Unsafe: \t" << unsafeResults.size() << endl;
-        outStream << "  Unreadable: \t" << unreadableResults.size() << endl;
-        outStream << "  Safe: \t" << safeResults.size() << endl;
+        resultStringStream << "AVIR SCAN REPORT" << endl;
+        resultStringStream << " --- " << endl;
+        resultStringStream << "Start time: \t" << ctime(&start_time);
+        resultStringStream << "Elapsed: \t" << elapsed_seconds.count() << " seconds" << endl;
+        resultStringStream << "Status: \t" << get_scan_status_name() << endl;
+        resultStringStream << " --- " << endl;
+        resultStringStream << "Scan path: \t" << scanPath.string() << endl;
+        resultStringStream << "Scan type: \t" << get_scan_type_name() << endl;
+        resultStringStream << " --- " << endl;
+        resultStringStream << "File count: \t" << results.size() << endl;
+        resultStringStream << "  Unsafe: \t" << unsafeResults.size() << endl;
+        resultStringStream << "  Unreadable: \t" << unreadableResults.size() << endl;
+        resultStringStream << "  Safe: \t" << safeResults.size() << endl;
 
         if(!unsafeResults.empty()){
-            outStream << " --- " << endl;
-            outStream << "UNSAFE FILES: \t" << endl;
+            resultStringStream << " --- " << endl;
+            resultStringStream << "UNSAFE FILES: \t" << endl;
             for(auto & r : unsafeResults){
-                outStream << "  " << r.path.string() << endl;
+                resultStringStream << "  " << r.path.string() << endl;
             }
         }
 
         if(!unreadableResults.empty()){
-            outStream << " --- " << endl;
-            outStream << "Unreadable files: \t" << endl;
+            resultStringStream << " --- " << endl;
+            resultStringStream << "Unreadable files: \t" << endl;
             for(auto & r : unreadableResults){
-                outStream << "  " << r.path.string() << endl;
+                resultStringStream << "  " << r.path.string() << endl;
             }
         }
 
-        /*
-        if(!safeResults.empty()){
-            outStream << " --- " << endl;
-            outStream << "Safe files: \t" << endl;
-            for(auto & r : safeResults){
-                outStream << "  " << r.path.string() << endl;
-            }
-        }
-         */
+        resultStringStream << endl;
 
-        outStream << endl;
-        outStream.close();
+        for(const path& outputPath : outputPaths){
+            boost::filesystem::ofstream outStream(outputPath);
+            outStream << resultStringStream.str();
+        }
     }
 
     // empty constructor
-    scan::scan(){}
+    scan::scan()= default;
 
     // main scan function
     void scan::begin()
@@ -185,12 +186,12 @@ namespace Scan
 
         // load local hash base
 
-        load_hash_base(hashbasePath);
+        auto hashBase = load_hash_base(hashBasePaths);
 
         // print result at beginning
 
         scanStatus = just_started;
-        print_result();
+        print_result_to_files();
 
         // begin scanning
 
@@ -235,7 +236,7 @@ namespace Scan
 
         for(auto & file : filePaths){
 
-            file_scan_result result = scan_file(file);
+            file_scan_result result = scan_file(file, hashBase, false);
 
             results.push_back(result);
 
@@ -253,6 +254,6 @@ namespace Scan
 
         scanStatus = completed;
 
-        print_result();
+        print_result_to_files();
     }
 }
