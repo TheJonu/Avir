@@ -32,7 +32,7 @@ namespace Scan {
 
     // check if file is safe option_online
     bool check_if_safe_online(string &fileHash) {
-        string requestStr = "whois -h fileHash.cymru.com " + fileHash;
+        string requestStr = "whois -h hash.cymru.com " + fileHash;
         string response = execute(&requestStr[0]);
         return response.find("NO_DATA") != string::npos;
     }
@@ -63,12 +63,9 @@ namespace Scan {
         return hashBase;
     }
 
-    // scans a single file
-    file_scan_result scan_file(path &filePath, vector<string> &hashBase, bool check_online) {
+    file_scan_result scan_file_locally(path &filePath, vector<string> &hashBase) {
         file_scan_result result;
-
         result.path = filePath;
-
         result.hash = Hash::md5(filePath.string());
 
         if (result.hash.empty()) {
@@ -76,15 +73,25 @@ namespace Scan {
             return result;
         }
 
-        bool safe = true;
+        if (check_if_safe_locally(result.hash, hashBase))
+            result.state = state_safe;
+        else
+            result.state = state_not_safe;
 
-        if (!check_if_safe_locally(result.hash, hashBase))
-            safe = false;
+        return result;
+    }
 
-        if (check_online && !check_if_safe_online(result.hash))
-            safe = false;
+    file_scan_result scan_file_online(const path& filePath){
+        file_scan_result result;
+        result.path = filePath;
+        result.hash = Hash::md5(filePath.string());
 
-        if (safe)
+        if (result.hash.empty()) {
+            result.state = state_not_readable;
+            return result;
+        }
+
+        if (check_if_safe_online(result.hash))
             result.state = state_safe;
         else
             result.state = state_not_safe;
@@ -192,65 +199,64 @@ namespace Scan {
         scan.results.reserve(scan.filePaths.size());
 
         // scan option_online
-        /*
-        vector<future<file_scan_result>> futures;
-        futures.reserve(filePaths.size());
 
-        for(auto & file : filePaths){
-            futures.push_back(async(launch::async, scan_file, file));
-        }
+        if(scan.online){
+            vector<future<file_scan_result>> futures;
+            futures.reserve(scan.filePaths.size());
 
-        double last_print_time = 0;
+            for(auto & file : scan.filePaths){
+                futures.push_back(async(launch::async, scan_file_online, file));
+            }
 
-        for(auto & e : futures){
-            file_scan_result result = e.get();
-            results.push_back(result);
+            for(auto & e : futures){
+                file_scan_result result = e.get();
+                scan.results.push_back(result);
 
-            auto now = std::chrono::system_clock::now();
-            elapsed_seconds = now - start;
-
-            if(elapsed_seconds.count() - last_print_time > 0.5f){
-                cout << "Print result at " << elapsed_seconds.count() << " seconds";
-
-                last_print_time = elapsed_seconds.count();
-
-                switch(result.state){
-                    case is_not_readable: unreadableResults.push_back(result); break;
-                    case is_not_safe: unsafeResults.push_back(result); break;
-                    case is_safe: safeResults.push_back(result); break;
+                switch (result.state) {
+                    case state_not_readable:
+                        scan.unreadableResults.push_back(result);
+                        break;
+                    case state_not_safe:
+                        scan.unsafeResults.push_back(result);
+                        break;
+                    case state_safe:
+                        scan.safeResults.push_back(result);
+                        break;
                 }
 
-                print_result();
+                auto now = std::chrono::system_clock::now();
+                scan.elapsedSeconds = now - start;
+
+                print_result_to_files(scan);
             }
         }
-        */
 
         // scan locally
 
-        for (auto &file : scan.filePaths) {
+        if(!scan.online){
+            for (auto &file : scan.filePaths) {
+                file_scan_result result = scan_file_locally(file, hashBase);
+                scan.results.push_back(result);
 
-            file_scan_result result = scan_file(file, hashBase, false);
+                switch (result.state) {
+                    case state_not_readable:
+                        scan.unreadableResults.push_back(result);
+                        break;
+                    case state_not_safe:
+                        scan.unsafeResults.push_back(result);
+                        break;
+                    case state_safe:
+                        scan.safeResults.push_back(result);
+                        break;
+                }
 
-            scan.results.push_back(result);
+                auto end = std::chrono::system_clock::now();
+                scan.elapsedSeconds = end - start;
 
-            switch (result.state) {
-                case state_not_readable:
-                    scan.unreadableResults.push_back(result);
-                    break;
-                case state_not_safe:
-                    scan.unsafeResults.push_back(result);
-                    break;
-                case state_safe:
-                    scan.safeResults.push_back(result);
-                    break;
+                print_result_to_files(scan);
+
+                usleep(100);
             }
-
-            auto end = std::chrono::system_clock::now();
-            scan.elapsedSeconds = end - start;
-
-            print_result_to_files(scan);
-
-            usleep(100);
         }
 
         // print result at the end
