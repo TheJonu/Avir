@@ -3,44 +3,68 @@
 
 #include <iostream>
 #include <ctime>
-
 #include <boost/filesystem.hpp>
 
-namespace Scan
-{
-    enum scan_type{
-        file_scan, dir_linear_scan, dir_recursive_scan
+namespace Scan {
+    enum scan_type {
+        type_file, type_directory_linear, type_directory_recursive
     };
 
-    enum scan_status{
-        just_started, in_progress, completed
+    enum scan_status {
+        status_just_started, status_in_progress, status_completed
     };
 
-    enum file_state{
-        is_not_readable, is_safe, is_not_safe
+    enum file_state {
+        state_not_readable, state_safe, state_not_safe
     };
 
-    struct file_scan_result{
+    struct file_scan_result {
         boost::filesystem::path path;
         std::string hash;
         file_state state;
     };
 
-    class scan{
-    private:
-        void print_result_to_files();
-        std::string get_scan_type_name() const;
-        std::string get_scan_status_name() const;
-    public:
-        scan_type scanType;
-        bool scanOnline;
+    struct scan {
+        scan_type type;
+        bool online;
         std::vector<boost::filesystem::path> filePaths;
         boost::filesystem::path scanPath;
         std::vector<boost::filesystem::path> hashBasePaths;
         std::vector<boost::filesystem::path> outputPaths;
-        scan();
-        void begin();
+        scan_status status;
+        std::vector<file_scan_result> results;
+        std::vector<file_scan_result> unsafeResults;
+        std::vector<file_scan_result> unreadableResults;
+        std::vector<file_scan_result> safeResults;
+        std::vector<std::string> hashBase;
+        std::time_t startTime;
+        std::chrono::duration<double> elapsedSeconds;
     };
+
+    /*
+    class scan {
+    public:
+        scan_type type;
+        bool online;
+        std::vector<boost::filesystem::path> filePaths;
+        boost::filesystem::path scanPath;
+        std::vector<boost::filesystem::path> hashBasePaths;
+        std::vector<boost::filesystem::path> outputPaths;
+    public:
+        scan_status status;
+        std::vector<file_scan_result> results;
+        std::vector<file_scan_result> unsafeResults;
+        std::vector<file_scan_result> unreadableResults;
+        std::vector<file_scan_result> safeResults;
+        std::vector<std::string> hashBase;
+        std::time_t startTime;
+        std::chrono::duration<double> elapsedSeconds;
+    public:
+        scan();
+    };
+     */
+
+    void begin(scan scan);
 }
 
 #endif
