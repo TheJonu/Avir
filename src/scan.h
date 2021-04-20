@@ -11,7 +11,7 @@ namespace Scan {
     };
 
     enum scan_status {
-        status_just_started, status_in_progress, status_completed
+        status_just_started, status_in_progress, status_completed, status_terminated
     };
 
     enum file_state {
@@ -27,6 +27,7 @@ namespace Scan {
     struct scan {
         scan_type type;
         bool online;
+        bool unreadable;
         std::vector<boost::filesystem::path> filePaths;
         boost::filesystem::path scanPath;
         std::vector<boost::filesystem::path> hashBasePaths;

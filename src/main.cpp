@@ -1,7 +1,18 @@
 #include <iostream>
 #include <string>
 #include <unistd.h>
+#include <csignal>
+#include <sys/prctl.h>
 #include <boost/filesystem.hpp>
+#include <sys/types.h>
+#include <dirent.h>
+#include <cerrno>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+#include <cstdio>
 #include "scan.h"
 
 using namespace std;
@@ -11,7 +22,7 @@ enum action {
     action_null, action_sf, action_sl, action_sr, action_show, action_stop
 };
 enum option {
-    option_null, option_b, option_o, option_online
+    option_null, option_b, option_o, option_online, option_unreadable
 };
 
 action get_action(const string &actionString) {
@@ -27,6 +38,7 @@ option get_option(const string &optionString) {
     if (optionString == "-b") return option_b;
     else if (optionString == "-o") return option_o;
     else if (optionString == "--online") return option_online;
+    else if (optionString == "--unreadable") return option_unreadable;
     return option_null;
 }
 
@@ -103,8 +115,68 @@ void show_last_report(path &directoryPath){
     }
 }
 
-void stop_ongoing_scans(){
+int getProcIdByName(string procName)
+{
+    int pid = -1;
 
+    // Open the /proc directory
+    DIR *dp = opendir("/proc");
+    if (dp != NULL)
+    {
+        // Enumerate all entries in directory until process found
+        struct dirent *dirp;
+        while (pid < 0 && (dirp = readdir(dp)))
+        {
+            // Skip non-numeric entries
+            int id = atoi(dirp->d_name);
+            if (id > 0)
+            {
+                // Read contents of virtual /proc/{pid}/cmdline file
+                string cmdPath = string("/proc/") + dirp->d_name + "/cmdline";
+                std::ifstream cmdFile(cmdPath.c_str());
+                string cmdLine;
+                getline(cmdFile, cmdLine);
+                if (!cmdLine.empty())
+                {
+                    // Keep first cmdline item which contains the program path
+                    size_t pos = cmdLine.find('\0');
+                    if (pos != string::npos)
+                        cmdLine = cmdLine.substr(0, pos);
+                    // Keep program name only, removing the path
+                    pos = cmdLine.rfind('/');
+                    if (pos != string::npos)
+                        cmdLine = cmdLine.substr(pos + 1);
+                    // Compare against requested process name
+                    if (procName == cmdLine)
+                        pid = id;
+                }
+            }
+        }
+    }
+
+    closedir(dp);
+
+    return pid;
+}
+
+void stop_ongoing_scans(){
+    auto thisPid = getpid();
+    auto scanPid = getProcIdByName("avir");
+
+    if(scanPid == 0 || scanPid == thisPid){
+        cout << "No Avir processes found." << endl;
+    }
+
+    while(scanPid != 0 && scanPid != thisPid) {
+        uint result = kill(scanPid, SIGTERM);
+        if (result == 0) {
+            cout << "Successfully terminated Avir scan with PID " + to_string(scanPid) + "." << endl;
+            scanPid = getProcIdByName("avir");
+        } else {
+            cout << "Process " + to_string(scanPid) + " couldn't be stopped." << endl;
+            scanPid = 0;
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -141,7 +213,7 @@ int main(int argc, char *argv[]) {
 
     // prepare scan
 
-    Scan::scan scan;
+    Scan::scan scan = {};
     int nextOption = 3;
 
     // determine action argument
@@ -199,6 +271,8 @@ int main(int argc, char *argv[]) {
             }
         } else if (option == option_online) {
             scan.online = true;
+        } else if (option == option_unreadable){
+            scan.unreadable = true;
         } else {
             cout << "Wrong usage." << endl;
             return 0;
@@ -269,6 +343,7 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         case 0: {
+            prctl(PR_SET_NAME, (unsigned long) "avirscan");
             scan.filePaths = filePaths;
             scan.hashBasePaths = hashBasePaths;
             scan.outputPaths = outputPaths;

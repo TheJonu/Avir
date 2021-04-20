@@ -18,6 +18,7 @@ Usage: avir [action] [options]
    -b <path>     specify additional hash base file
    -o <path>     specify additional output file
    --online      check file hashes online
+   --unreadable  list unreadable files in report
 ```
 
 ### Installation

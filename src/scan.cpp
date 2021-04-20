@@ -2,10 +2,9 @@
 #include <chrono>
 #include <ctime>
 #include <future>
-#include <tgmath.h>
-
+#include <ctgmath>
+#include <csignal>
 #include <boost/filesystem.hpp>
-
 #include "scan.h"
 #include "hash.h"
 
@@ -13,6 +12,8 @@ using namespace std;
 using namespace boost::filesystem;
 
 namespace Scan {
+
+    scan *globalScan; // used by termination signal handler
 
     // executes a command in another process
     string execute(const char *cmd) {
@@ -103,15 +104,16 @@ namespace Scan {
         return "";
     }
 
-    string get_scan_status_name(scan_status scanStatus, uint resultsFile, uint filesCount) {
-        switch (scanStatus) {
+    string get_scan_status_name(const scan& scan) {
+        switch (scan.status) {
             case status_just_started:
                 return "just started";
-            case status_in_progress: {
-                return "in progress (" + to_string(resultsFile / filesCount * 100) + "%)";
-            };
+            case status_in_progress:
+                return "in progress (" + to_string(scan.results.size() * 100 / scan.filePaths.size()) + "%)";
             case status_completed:
                 return "completed";
+            case status_terminated:
+                return "terminated (" + to_string(scan.results.size() * 100 / scan.filePaths.size()) + "%)";
         }
         return "";
     }
@@ -123,7 +125,7 @@ namespace Scan {
         resultStringStream << " --- " << endl;
         resultStringStream << "Start time: \t" << ctime(&scan.startTime);
         resultStringStream << "Elapsed: \t" << scan.elapsedSeconds.count() << " seconds" << endl;
-        resultStringStream << "Status: \t" << get_scan_status_name(scan.status, scan.results.size(), scan.filePaths.size()) << endl;
+        resultStringStream << "Status: \t" << get_scan_status_name(scan) << endl;
         resultStringStream << " --- " << endl;
         resultStringStream << "Scan path: \t" << scan.scanPath.string() << endl;
         resultStringStream << "Scan type: \t" << get_scan_type_name(scan.type) << endl;
@@ -141,7 +143,7 @@ namespace Scan {
             }
         }
 
-        if (!scan.unreadableResults.empty()) {
+        if (scan.unreadable && !scan.unreadableResults.empty()) {
             resultStringStream << " --- " << endl;
             resultStringStream << "Unreadable files: \t" << endl;
             for (auto &r : scan.unreadableResults) {
@@ -157,8 +159,19 @@ namespace Scan {
         }
     }
 
+    void terminate_signal_handler(int signum){
+        (*globalScan).status = status_terminated;
+        print_result_to_files(*globalScan);
+        exit(signum);
+    }
+
     // main scan function
     void begin(scan scan) {
+        // register signal handler
+
+        globalScan = &scan;
+        signal(SIGTERM, terminate_signal_handler);
+
         // start clock
 
         auto start = std::chrono::system_clock::now();
@@ -231,12 +244,16 @@ namespace Scan {
                     scan.safeResults.push_back(result);
                     break;
             }
+
+            auto end = std::chrono::system_clock::now();
+            scan.elapsedSeconds = end - start;
+
+            print_result_to_files(scan);
+
+            usleep(100);
         }
 
         // print result at the end
-
-        auto end = std::chrono::system_clock::now();
-        scan.elapsedSeconds = end - start;
 
         scan.status = status_completed;
 
