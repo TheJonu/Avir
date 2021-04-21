@@ -32,14 +32,16 @@ namespace Scan {
         boost::filesystem::path scanPath;
         std::vector<boost::filesystem::path> hashBasePaths;
         std::vector<boost::filesystem::path> outputPaths;
+        boost::filesystem::path quarantineDirPath;
+        boost::filesystem::path quarantineListPath;
+        std::vector<std::string> hashBase;
         scan_status status;
+        std::time_t startTime;
+        std::chrono::duration<double> elapsedSeconds;
         std::vector<file_scan_result> results;
         std::vector<file_scan_result> unsafeResults;
         std::vector<file_scan_result> unreadableResults;
         std::vector<file_scan_result> safeResults;
-        std::vector<std::string> hashBase;
-        std::time_t startTime;
-        std::chrono::duration<double> elapsedSeconds;
     };
 
     /*

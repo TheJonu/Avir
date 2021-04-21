@@ -6,11 +6,7 @@
 #include <boost/filesystem.hpp>
 #include <sys/types.h>
 #include <dirent.h>
-#include <cerrno>
 #include <vector>
-#include <string>
-#include <iostream>
-#include <fstream>
 #include <cstdlib>
 #include <cstdio>
 #include "scan.h"
@@ -42,10 +38,10 @@ option get_option(const string &optionString) {
     return option_null;
 }
 
-Scan::scan_type get_scan_type(const action &action){
-    if(action == action_sf) return Scan::type_file;
-    else if(action == action_sl) return Scan::type_directory_linear;
-    else if(action == action_sr) return Scan::type_directory_recursive;
+Scan::scan_type get_scan_type(const action &action) {
+    if (action == action_sf) return Scan::type_file;
+    else if (action == action_sl) return Scan::type_directory_linear;
+    else if (action == action_sr) return Scan::type_directory_recursive;
     return Scan::type_file;
 }
 
@@ -88,7 +84,7 @@ void find_files_recursive(vector<path> &filePaths, path &scanPath) {
     }
 }
 
-void show_last_report(path &directoryPath){
+void show_last_report(path &directoryPath) {
     int bestNumber = 0;
     string bestPath;
     for (const auto &resultFile : directory_iterator(directoryPath)) {
@@ -115,29 +111,24 @@ void show_last_report(path &directoryPath){
     }
 }
 
-int getProcIdByName(string procName)
-{
+int getProcIdByName(string procName) {
     int pid = -1;
 
     // Open the /proc directory
     DIR *dp = opendir("/proc");
-    if (dp != NULL)
-    {
+    if (dp != nullptr) {
         // Enumerate all entries in directory until process found
         struct dirent *dirp;
-        while (pid < 0 && (dirp = readdir(dp)))
-        {
+        while (pid < 0 && (dirp = readdir(dp))) {
             // Skip non-numeric entries
             int id = atoi(dirp->d_name);
-            if (id > 0)
-            {
+            if (id > 0) {
                 // Read contents of virtual /proc/{pid}/cmdline file
                 string cmdPath = string("/proc/") + dirp->d_name + "/cmdline";
                 std::ifstream cmdFile(cmdPath.c_str());
                 string cmdLine;
                 getline(cmdFile, cmdLine);
-                if (!cmdLine.empty())
-                {
+                if (!cmdLine.empty()) {
                     // Keep first cmdline item which contains the program path
                     size_t pos = cmdLine.find('\0');
                     if (pos != string::npos)
@@ -159,15 +150,15 @@ int getProcIdByName(string procName)
     return pid;
 }
 
-void stop_ongoing_scans(){
+void stop_ongoing_scans() {
     auto thisPid = getpid();
     auto scanPid = getProcIdByName("avir");
 
-    if(scanPid == 0 || scanPid == thisPid){
+    if (scanPid == 0 || scanPid == thisPid) {
         cout << "No Avir processes found." << endl;
     }
 
-    while(scanPid != 0 && scanPid != thisPid) {
+    while (scanPid != 0 && scanPid != thisPid) {
         uint result = kill(scanPid, SIGTERM);
         if (result == 0) {
             cout << "Successfully terminated Avir scan with PID " + to_string(scanPid) + "." << endl;
@@ -198,11 +189,19 @@ int main(int argc, char *argv[]) {
     hashBasePaths.push_back(canonical(hashbaseString));
 
     string resultsString = avirString + "/results";
-    path resultsPath = canonical(resultsString);
     create_directories(resultsString);
+    path resultsPath = canonical(resultsString);
+
     path defaultOutputPath = resultsString + "/avir_" + to_string(start_time) + ".txt";
     vector<path> outputPaths;
     outputPaths.push_back(defaultOutputPath);
+
+    string quarantineDirString = avirString + "/quarantine";
+    create_directories(quarantineDirString);
+    path quarantineDirPath = canonical(quarantineDirString);
+
+    string quarantineListString = avirString + "/quarantine.txt";
+    path quarantineListPath = canonical(quarantineListString);
 
     // print usage if no arguments
 
@@ -220,7 +219,7 @@ int main(int argc, char *argv[]) {
 
     action action = get_action(argv[1]);
 
-    if (argc >=3 && (action == action_sf || action == action_sl || action == action_sr)) {
+    if (argc >= 3 && (action == action_sf || action == action_sl || action == action_sr)) {
         string pathString = argv[2];
         scan.type = get_scan_type(action);
         scan.scanPath = canonical(pathString);
@@ -252,6 +251,7 @@ int main(int argc, char *argv[]) {
                             cout << "Error - hash base file can't be opened." << endl;
                             return 0;
                         }
+                        break;
                     }
                     case option_o: {
                         std::ofstream file{optionPathString};
@@ -261,9 +261,8 @@ int main(int argc, char *argv[]) {
                             cout << "Error - output file can't be opened." << endl;
                             return 0;
                         }
-                    }
-                    case option_null:
                         break;
+                    }
                 }
             } else {
                 cout << "Wrong usage." << endl;
@@ -271,7 +270,7 @@ int main(int argc, char *argv[]) {
             }
         } else if (option == option_online) {
             scan.online = true;
-        } else if (option == option_unreadable){
+        } else if (option == option_unreadable) {
             scan.unreadable = true;
         } else {
             cout << "Wrong usage." << endl;
@@ -328,7 +327,7 @@ int main(int argc, char *argv[]) {
         cout << "Found " << filePaths.size() << " files at " << scan.scanPath << endl;
 
         string yn;
-        cout << "Do you want to continue? [Y/n] ";
+        printf("Do you want to continue? [Y/n] ");
         cin >> yn;
         if (yn != "y" && yn != "Y") {
             return 0;
@@ -347,15 +346,19 @@ int main(int argc, char *argv[]) {
             scan.filePaths = filePaths;
             scan.hashBasePaths = hashBasePaths;
             scan.outputPaths = outputPaths;
+            scan.quarantineDirPath = quarantineDirPath;
+            scan.quarantineListPath = quarantineListPath;
             Scan::begin(scan);
             return 0;
         }
         default: {
             cout << "Scan started." << endl;
-            cout << "Result file locations:" << endl;
+            /*
+            cout << "Report file locations:" << endl;
             for (const path &outputPath : outputPaths) {
                 cout << "  " << outputPath.string() << endl;
             }
+             */
         }
     }
 }

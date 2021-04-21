@@ -99,6 +99,11 @@ namespace Scan {
         return result;
     }
 
+    void move_to_quarantine(const path& filePath, const path& quarantinePath){
+        string newPath = quarantinePath.string() + "/" + filePath.filename().string();
+        rename(filePath.string(), newPath);
+    }
+
     string get_scan_type_name(scan_type scanType) {
         switch (scanType) {
             case type_file:
@@ -125,6 +130,11 @@ namespace Scan {
         return "";
     }
 
+    string get_hash_source_name(bool isOnline){
+        if(isOnline) return "online";
+        else return "local";
+    }
+
     void print_result_to_files(scan& scan) {
         stringstream resultStringStream;
 
@@ -136,6 +146,7 @@ namespace Scan {
         resultStringStream << " --- " << endl;
         resultStringStream << "Scan path: \t" << scan.scanPath.string() << endl;
         resultStringStream << "Scan type: \t" << get_scan_type_name(scan.type) << endl;
+        resultStringStream << "Hash source: \t" << get_hash_source_name(scan.online) << endl;
         resultStringStream << " --- " << endl;
         resultStringStream << "File count: \t" << scan.results.size() << endl;
         resultStringStream << "  Unsafe: \t" << scan.unsafeResults.size() << endl;
@@ -218,6 +229,7 @@ namespace Scan {
                         break;
                     case state_not_safe:
                         scan.unsafeResults.push_back(result);
+                        move_to_quarantine(result.path, scan.quarantineDirPath);
                         break;
                     case state_safe:
                         scan.safeResults.push_back(result);
@@ -244,6 +256,7 @@ namespace Scan {
                         break;
                     case state_not_safe:
                         scan.unsafeResults.push_back(result);
+                        move_to_quarantine(result.path, scan.quarantineDirPath);
                         break;
                     case state_safe:
                         scan.safeResults.push_back(result);
