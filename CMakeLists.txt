@@ -15,7 +15,7 @@ include_directories(${Boost_INCLUDE_DIR})
 
 link_directories(${Boost_LIBRARY_DIR})
 
-add_executable(${PROJECT_NAME} src/main.cpp src/hash.cpp src/hash.h src/scan.cpp src/scan.h)
+add_executable(${PROJECT_NAME} src/main.cpp src/scan.cpp src/scan.h)
 
 target_link_libraries(${PROJECT_NAME} OpenSSL::SSL)
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})

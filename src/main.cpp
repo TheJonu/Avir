@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     vector<path> hashBasePaths;
     hashBasePaths.push_back(canonical(hashbaseString));
 
-    string resultsString = avirString + "/results";
+    string resultsString = avirString + "/reports";
     create_directories(resultsString);
     path resultsPath = canonical(resultsString);
 

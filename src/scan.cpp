@@ -2,11 +2,12 @@
 #include <chrono>
 #include <ctime>
 #include <future>
-#include <ctgmath>
 #include <csignal>
+#include <iomanip>
+#include <openssl/md5.h>
 #include <boost/filesystem.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 #include "scan.h"
-#include "hash.h"
 
 using namespace std;
 using namespace boost::filesystem;
@@ -28,6 +29,25 @@ namespace Scan {
             result += buffer.data();
         }
         return result;
+    }
+
+    std::string md5(const std::string& file_path)
+    {
+        unsigned char result[MD5_DIGEST_LENGTH];
+
+        try{
+            boost::iostreams::mapped_file_source src(file_path);
+            MD5((unsigned char*)src.data(), src.size(), result);
+
+            std::ostringstream sout;
+            sout << std::hex << std::setfill('0');
+            for(auto c: result) sout << std::setw(2) << (int)c;
+
+            return sout.str();
+        }
+        catch(const std::exception&) {
+            return "";
+        }
     }
 
     // check if file is safe option_online
@@ -66,7 +86,7 @@ namespace Scan {
     file_scan_result scan_file_locally(path &filePath, vector<string> &hashBase) {
         file_scan_result result;
         result.path = filePath;
-        result.hash = Hash::md5(filePath.string());
+        result.hash = md5(filePath.string());
 
         if (result.hash.empty()) {
             result.state = state_not_readable;
@@ -84,7 +104,7 @@ namespace Scan {
     file_scan_result scan_file_online(const path& filePath){
         file_scan_result result;
         result.path = filePath;
-        result.hash = Hash::md5(filePath.string());
+        result.hash = md5(filePath.string());
 
         if (result.hash.empty()) {
             result.state = state_not_readable;
