@@ -19,7 +19,7 @@ enum action {
     action_null, action_sf, action_sl, action_sr, action_show, action_stop
 };
 enum option {
-    option_null, option_b, option_o, option_online, option_unreadable
+    option_null, option_h, option_o, option_online, option_unreadable
 };
 
 action get_action(const string &actionString) {
@@ -32,7 +32,7 @@ action get_action(const string &actionString) {
 }
 
 option get_option(const string &optionString) {
-    if (optionString == "-b") return option_b;
+    if (optionString == "-h") return option_h;
     else if (optionString == "-o") return option_o;
     else if (optionString == "--online") return option_online;
     else if (optionString == "--unreadable") return option_unreadable;
@@ -196,6 +196,9 @@ int main(int argc, char *argv[]) {
     create_directories(avirString);
 
     path hashListPath = avirString + "/hashlist.txt";
+    if(!exists(hashListPath)) {
+        std::ofstream o (hashListPath.string());
+    }
     vector<path> hashListPaths;
     hashListPaths.push_back(hashListPath);
 
@@ -250,12 +253,12 @@ int main(int argc, char *argv[]) {
 
     while (argc > nextOption) {
         option option = get_option(argv[nextOption]);
-        if (option == option_b || option == option_o) {
+        if (option == option_h || option == option_o) {
             nextOption++;
             if (argc > nextOption) {
                 string optionPathString = argv[nextOption];
                 switch (option) {
-                    case option_b: {
+                    case option_h: {
                         std::ifstream file{optionPathString};
                         if (access(optionPathString.c_str(), F_OK) != -1) {
                             hashListPaths.push_back(canonical(optionPathString));
