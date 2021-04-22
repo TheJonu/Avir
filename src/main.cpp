@@ -56,7 +56,7 @@ void print_usage() {
     cout << "   --show        show last scan report" << endl;
     cout << "   --stop        stop all ongoing scans" << endl;
     cout << " Scan options" << endl;
-    cout << "   -b <path>     specify an additional hash list file" << endl;
+    cout << "   -h <path>     specify an additional hash list file" << endl;
     cout << "   -o <path>     specify an additional output/report file" << endl;
     cout << "   --online      check hashes online instead locally" << endl;
     cout << "   --unreadable  list unreadable files in report" << endl;

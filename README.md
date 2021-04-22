@@ -15,7 +15,7 @@ Usage: avir [action] [options]
    --show        show last scan report
    --stop        stop all ongoing scans
  Scan options
-   -b <path>     specify an additional hash list file
+   -h <path>     specify an additional hash list file
    -o <path>     specify an additional output/report file
    --online      check hashes online instead of locally
    --unreadable  list unreadable files in report
