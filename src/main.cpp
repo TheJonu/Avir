@@ -9,6 +9,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
+#include <sys/stat.h>
 #include "scan.h"
 
 using namespace std;
@@ -52,39 +53,49 @@ void print_usage() {
     cout << "   -l <path>     scan a directory linearly" << endl;
     cout << "   -r <path>     scan a directory recursively" << endl;
     cout << " Other actions" << endl;
-    cout << "   --show        show last scan result" << endl;
+    cout << "   --show        show last scan report" << endl;
     cout << "   --stop        stop all ongoing scans" << endl;
     cout << " Scan options" << endl;
-    cout << "   -b <path>     specify additional hash base" << endl;
-    cout << "   -o <path>     specify additional output file" << endl;
-    cout << "   --online      check hashes online" << endl;
+    cout << "   -b <path>     specify an additional hash list file" << endl;
+    cout << "   -o <path>     specify an additional output/report file" << endl;
+    cout << "   --online      check hashes online instead locally" << endl;
+    cout << "   --unreadable  list unreadable files in report" << endl;
 }
 
-void find_file(vector<path> &filePaths, path &scanPath) {
+void find_files_recursive(vector<path> &filePaths, const path &scanPath) {
+    recursive_directory_iterator it = recursive_directory_iterator(scanPath);
+    recursive_directory_iterator end;
+    while (it != end) {
+        try {
+            if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
+            ++it;
+        } catch (exception &ex) {
+            it.no_push();
+            try { ++it; } catch (exception &ex) {}
+        }
+    }
+}
+
+void find_files_linear(vector<path> &filePaths, const path &scanPath) {
+    directory_iterator it = directory_iterator(scanPath);
+    directory_iterator end;
+    while (it != end) {
+        try {
+            if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
+            ++it;
+        } catch (exception &ex) {
+            try { ++it; } catch (exception &ex) {}
+        }
+    }
+}
+
+void find_file(vector<path> &filePaths, const path &scanPath) {
     if (is_regular_file(scanPath)) {
         filePaths.push_back(scanPath);
     }
 }
 
-void find_files_linear(vector<path> &filePaths, path &scanPath) {
-    for (directory_iterator iterator(scanPath); iterator != directory_iterator(); ++iterator) {
-        path path = iterator->path();
-        if (is_regular_file(path)) {
-            filePaths.push_back(path);
-        }
-    }
-}
-
-void find_files_recursive(vector<path> &filePaths, path &scanPath) {
-    for (recursive_directory_iterator iterator(scanPath); iterator != recursive_directory_iterator(); ++iterator) {
-        path path = iterator->path();
-        if (is_regular_file(path)) {
-            filePaths.push_back(path);
-        }
-    }
-}
-
-void show_last_report(path &directoryPath) {
+void show_last_report(const path &directoryPath) {
     int bestNumber = 0;
     string bestPath;
     for (const auto &resultFile : directory_iterator(directoryPath)) {
@@ -111,7 +122,7 @@ void show_last_report(path &directoryPath) {
     }
 }
 
-int getProcIdByName(string procName) {
+int getProcIdByName(const string& procName) {
     int pid = -1;
 
     // Open the /proc directory
@@ -184,9 +195,9 @@ int main(int argc, char *argv[]) {
     string avirString = homeString + "/Avir";
     create_directories(avirString);
 
-    string hashbaseString = avirString + "/hashbase.txt";
-    vector<path> hashBasePaths;
-    hashBasePaths.push_back(canonical(hashbaseString));
+    path hashListPath = avirString + "/hashlist.txt";
+    vector<path> hashListPaths;
+    hashListPaths.push_back(hashListPath);
 
     string resultsString = avirString + "/reports";
     create_directories(resultsString);
@@ -199,9 +210,10 @@ int main(int argc, char *argv[]) {
     string quarantineDirString = avirString + "/quarantine";
     create_directories(quarantineDirString);
     path quarantineDirPath = canonical(quarantineDirString);
+    //chmod(quarantineDirString.c_str(), S_IREAD | S_IWRITE);
 
-    string quarantineListString = avirString + "/quarantine.txt";
-    path quarantineListPath = canonical(quarantineListString);
+    //string quarantineListString = avirString + "/quarantine.txt";
+    //path quarantineListPath = canonical(quarantineListString);
 
     // print usage if no arguments
 
@@ -246,7 +258,7 @@ int main(int argc, char *argv[]) {
                     case option_b: {
                         std::ifstream file{optionPathString};
                         if (access(optionPathString.c_str(), F_OK) != -1) {
-                            hashBasePaths.push_back(canonical(optionPathString));
+                            hashListPaths.push_back(canonical(optionPathString));
                         } else {
                             cout << "Error - hash base file can't be opened." << endl;
                             return 0;
@@ -344,10 +356,10 @@ int main(int argc, char *argv[]) {
         case 0: {
             prctl(PR_SET_NAME, (unsigned long) "avirscan");
             scan.filePaths = filePaths;
-            scan.hashBasePaths = hashBasePaths;
+            scan.hashBasePaths = hashListPaths;
             scan.outputPaths = outputPaths;
             scan.quarantineDirPath = quarantineDirPath;
-            scan.quarantineListPath = quarantineListPath;
+            //scan.quarantineListPath = quarantineListPath;
             Scan::begin(scan);
             return 0;
         }

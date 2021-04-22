@@ -228,8 +228,11 @@ namespace Scan {
 
         scan.status = status_in_progress;
         scan.results.reserve(scan.filePaths.size());
+        auto lastNow = std::chrono::system_clock::now();
+        chrono::duration<double> timeSinceSave{};
+        double saveInterval = 1;
 
-        // scan option_online
+        // scan online
 
         if(scan.online){
             vector<future<file_scan_result>> futures;
@@ -256,10 +259,15 @@ namespace Scan {
                         break;
                 }
 
-                auto now = std::chrono::system_clock::now();
-                scan.elapsedSeconds = now - start;
-
-                print_result_to_files(scan);
+                auto newNow = std::chrono::system_clock::now();
+                scan.elapsedSeconds = newNow - start;
+                timeSinceSave += newNow - lastNow;
+                if(timeSinceSave.count() > saveInterval){
+                    cout << "Print at " << to_string(scan.elapsedSeconds.count()) << endl;
+                    print_result_to_files(scan);
+                    timeSinceSave = {};
+                }
+                lastNow = newNow;
             }
         }
 
@@ -283,12 +291,17 @@ namespace Scan {
                         break;
                 }
 
-                auto end = std::chrono::system_clock::now();
-                scan.elapsedSeconds = end - start;
+                auto newNow = std::chrono::system_clock::now();
+                scan.elapsedSeconds = newNow - start;
+                timeSinceSave += newNow - lastNow;
+                if(timeSinceSave.count() > saveInterval){
+                    cout << "Print at " << to_string(scan.elapsedSeconds.count()) << endl;
+                    print_result_to_files(scan);
+                    timeSinceSave = {};
+                }
+                lastNow = newNow;
 
-                print_result_to_files(scan);
-
-                usleep(100);
+                //usleep(100);
             }
         }
 
