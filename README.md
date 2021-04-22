@@ -28,10 +28,10 @@ Run `./setup.sh`
 ### More info
 
 - Avir's base directory is `~/Avir` (`home/{user}/Avir`).
-- The default file containing malware hashes is located at `~/Avir/hashbase.txt`.
+- The default file containing malware hashes is located at `~/Avir/hashlist.txt`.
 - You can also specify hash base files at other locations.
 - Those files should contain one MD5 hash per line.
-- All scan reports are saved to `~/Avir/results` with the signature `avir_{timestamp}.txt`.
+- All scan reports are saved to `~/Avir/reports` with the signature `avir_{timestamp}.txt`.
 - You can also specify additional locations at which to save the result file.
 - The `--online` option makes use of
   [Team Cymru's Malware Hash Registry](https://team-cymru.com/community-services/mhr/).
