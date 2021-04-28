@@ -35,8 +35,10 @@ action get_action(const string &actionString) {
 // converts a string to option enum
 option get_option(const string &optionString) {
     if (optionString == "-h") return option_h;
-    else if (optionString == "-o") return option_o;
+    else if (optionString == "-r") return option_o;
+    else if (optionString == "-o") return option_online;
     else if (optionString == "--online") return option_online;
+    else if (optionString == "-u") return option_unreadable;
     else if (optionString == "--unreadable") return option_unreadable;
     return option_null;
 }
@@ -53,17 +55,17 @@ Scan::scan_scope get_scan_scope(const action &action) {
 void print_usage() {
     cout << "Usage: avir [action] [options]" << endl;
     cout << " Scan actions" << endl;
-    cout << "   f <path>      scan a single file" << endl;
-    cout << "   l <path>      scan a directory linearly" << endl;
-    cout << "   r <path>      scan a directory recursively" << endl;
+    cout << "   f <path>        scan a single file" << endl;
+    cout << "   l <path>        scan a directory linearly" << endl;
+    cout << "   r <path>        scan a directory recursively" << endl;
     cout << " Other actions" << endl;
-    cout << "   show          show last scan report" << endl;
-    cout << "   stop          stop all ongoing scans" << endl;
+    cout << "   show            show last scan report" << endl;
+    cout << "   stop            stop all ongoing scans" << endl;
     cout << " Scan options" << endl;
-    cout << "   -h <path>     specify an additional hash list file" << endl;
-    cout << "   -o <path>     specify an additional output/report file" << endl;
-    cout << "   --online      check hashes online instead of locally" << endl;
-    cout << "   --unreadable  list unreadable files in report" << endl;
+    cout << "   -h <path>       specify an additional hash list file" << endl;
+    cout << "   -r <path>       specify an additional report file" << endl;
+    cout << "   -o, --online    check hashes online instead of locally" << endl;
+    cout << "   -u, --unread    list unreadable files in report" << endl;
 }
 
 // finds files in a directory recursively

@@ -16,9 +16,9 @@ Usage: avir [action] [options]
    stop          stop all ongoing scans
  Scan options
    -h <path>     specify an additional hash list file
-   -o <path>     specify an additional output/report file
-   --online      check hashes online instead of locally
-   --unreadable  list unreadable files in report
+   -r <path>     specify an additional output/report file
+   -o, --online  check hashes online instead of locally
+   -u, --unread  list unreadable files in report
 ```
 
 ### Installation
