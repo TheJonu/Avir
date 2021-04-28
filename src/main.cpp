@@ -22,15 +22,17 @@ enum option {
     option_null, option_h, option_o, option_online, option_unreadable
 };
 
+// converts a string to action enum
 action get_action(const string &actionString) {
-    if (actionString == "-f") return action_sf;
-    else if (actionString == "-l") return action_sl;
-    else if (actionString == "-r") return action_sr;
-    else if (actionString == "--show") return action_show;
-    else if (actionString == "--stop") return action_stop;
+    if (actionString == "f") return action_sf;
+    else if (actionString == "l") return action_sl;
+    else if (actionString == "r") return action_sr;
+    else if (actionString == "show") return action_show;
+    else if (actionString == "stop") return action_stop;
     return action_null;
 }
 
+// converts a string to option enum
 option get_option(const string &optionString) {
     if (optionString == "-h") return option_h;
     else if (optionString == "-o") return option_o;
@@ -39,29 +41,32 @@ option get_option(const string &optionString) {
     return option_null;
 }
 
-Scan::scan_type get_scan_type(const action &action) {
-    if (action == action_sf) return Scan::type_file;
-    else if (action == action_sl) return Scan::type_directory_linear;
-    else if (action == action_sr) return Scan::type_directory_recursive;
-    return Scan::type_file;
+// converts an action enum to scan scope enum
+Scan::scan_scope get_scan_scope(const action &action) {
+    if (action == action_sf) return Scan::scope_file;
+    else if (action == action_sl) return Scan::scope_directory_linear;
+    else if (action == action_sr) return Scan::scope_directory_recursive;
+    return Scan::scope_file;
 }
 
+// prints app usage to the console
 void print_usage() {
     cout << "Usage: avir [action] [options]" << endl;
     cout << " Scan actions" << endl;
-    cout << "   -f <path>     scan a single file" << endl;
-    cout << "   -l <path>     scan a directory linearly" << endl;
-    cout << "   -r <path>     scan a directory recursively" << endl;
+    cout << "   f <path>      scan a single file" << endl;
+    cout << "   l <path>      scan a directory linearly" << endl;
+    cout << "   r <path>      scan a directory recursively" << endl;
     cout << " Other actions" << endl;
-    cout << "   --show        show last scan report" << endl;
-    cout << "   --stop        stop all ongoing scans" << endl;
+    cout << "   show          show last scan report" << endl;
+    cout << "   stop          stop all ongoing scans" << endl;
     cout << " Scan options" << endl;
     cout << "   -h <path>     specify an additional hash list file" << endl;
     cout << "   -o <path>     specify an additional output/report file" << endl;
-    cout << "   --online      check hashes online instead locally" << endl;
+    cout << "   --online      check hashes online instead of locally" << endl;
     cout << "   --unreadable  list unreadable files in report" << endl;
 }
 
+// finds files in a directory recursively
 void find_files_recursive(vector<path> &filePaths, const path &scanPath) {
     recursive_directory_iterator it = recursive_directory_iterator(scanPath);
     recursive_directory_iterator end;
@@ -76,6 +81,7 @@ void find_files_recursive(vector<path> &filePaths, const path &scanPath) {
     }
 }
 
+//finds files in a directory linearly
 void find_files_linear(vector<path> &filePaths, const path &scanPath) {
     directory_iterator it = directory_iterator(scanPath);
     directory_iterator end;
@@ -89,13 +95,16 @@ void find_files_linear(vector<path> &filePaths, const path &scanPath) {
     }
 }
 
+// finds a single file
 void find_file(vector<path> &filePaths, const path &scanPath) {
     if (is_regular_file(scanPath)) {
         filePaths.push_back(scanPath);
     }
 }
 
+// shows the last generated report
 void show_last_report(const path &directoryPath) {
+    // determine which report is the latest based on its number
     int bestNumber = 0;
     string bestPath;
     for (const auto &resultFile : directory_iterator(directoryPath)) {
@@ -107,10 +116,10 @@ void show_last_report(const path &directoryPath) {
             bestPath = path;
         }
     }
+    // print the contents if found
     if (bestNumber != 0) {
         cout << "Showing result nr " << bestNumber << ":" << endl;
         cout << endl;
-
         std::ifstream file(bestPath);
         if (file.is_open())
             cout << file.rdbuf();
@@ -122,9 +131,10 @@ void show_last_report(const path &directoryPath) {
     }
 }
 
-int getProcIdByName(const string& procName) {
+// gets a PID by its (original) name
+// "borrowed" code, can't find the source now :(
+int getProcIdByName(const string &procName) {
     int pid = -1;
-
     // Open the /proc directory
     DIR *dp = opendir("/proc");
     if (dp != nullptr) {
@@ -155,20 +165,20 @@ int getProcIdByName(const string& procName) {
             }
         }
     }
-
     closedir(dp);
-
     return pid;
 }
 
 void stop_ongoing_scans() {
+    // get first PIDs
     auto thisPid = getpid();
     auto scanPid = getProcIdByName("avir");
-
+    // break if no process found
     if (scanPid == 0 || scanPid == thisPid) {
         cout << "No Avir processes found." << endl;
+        return;
     }
-
+    // try to kill all processes
     while (scanPid != 0 && scanPid != thisPid) {
         uint result = kill(scanPid, SIGTERM);
         if (result == 0) {
@@ -182,61 +192,63 @@ void stop_ongoing_scans() {
 }
 
 int main(int argc, char *argv[]) {
-    // start timer
-
-    auto start = std::chrono::system_clock::now();
+    // get current time
+    auto start = chrono::system_clock::now();
     time_t start_time = chrono::system_clock::to_time_t(start);
 
-    // determine paths
+    // create home path if it doesn't exist
+    //char const *home = getenv("HOME");
+    //string homeString(home);
+    //string avirString = homeString + "/Avir";
 
-    char const *home = getenv("HOME");
-    string homeString(home);
-
-    string avirString = homeString + "/Avir";
+    // create a base directory if it doesn't exist
+    string avirString = "/avir";
     create_directories(avirString);
 
+    // create a hash list file if it doesn't exist and add its path
     path hashListPath = avirString + "/hashlist.txt";
-    if(!exists(hashListPath)) {
-        std::ofstream o (hashListPath.string());
-    }
+    if (!exists(hashListPath)) std::ofstream o(hashListPath.string());
     vector<path> hashListPaths;
     hashListPaths.push_back(hashListPath);
 
+    // create reports directory if it doesn't exist
     string resultsString = avirString + "/reports";
     create_directories(resultsString);
     path resultsPath = canonical(resultsString);
 
+    // add the default report file path
     path defaultOutputPath = resultsString + "/avir_" + to_string(start_time) + ".txt";
     vector<path> outputPaths;
     outputPaths.push_back(defaultOutputPath);
 
+    // create a quarantine directory if it doesn't exist
     string quarantineDirString = avirString + "/quarantine";
     create_directories(quarantineDirString);
     path quarantineDirPath = canonical(quarantineDirString);
+
+    // modify quarantine directory permission rules
     //chmod(quarantineDirString.c_str(), S_IREAD | S_IWRITE);
 
+    // create quarantine list file if it doesn't exist
     //string quarantineListString = avirString + "/quarantine.txt";
     //path quarantineListPath = canonical(quarantineListString);
 
-    // print usage if no arguments
-
+    // print usage if no arguments are given
     if (argc == 1) {
         print_usage();
         return 0;
     }
 
-    // prepare scan
-
+    // prepare
     Scan::scan scan = {};
+    scan.method = Scan::method_local;
     int nextOption = 3;
 
     // determine action argument
-
     action action = get_action(argv[1]);
-
     if (argc >= 3 && (action == action_sf || action == action_sl || action == action_sr)) {
         string pathString = argv[2];
-        scan.type = get_scan_type(action);
+        scan.scope = get_scan_scope(action);
         scan.scanPath = canonical(pathString);
     } else if (action == action_show) {
         show_last_report(resultsPath);
@@ -250,7 +262,6 @@ int main(int argc, char *argv[]) {
     }
 
     // determine option arguments
-
     while (argc > nextOption) {
         option option = get_option(argv[nextOption]);
         if (option == option_h || option == option_o) {
@@ -263,7 +274,7 @@ int main(int argc, char *argv[]) {
                         if (access(optionPathString.c_str(), F_OK) != -1) {
                             hashListPaths.push_back(canonical(optionPathString));
                         } else {
-                            cout << "Error - hash base file can't be opened." << endl;
+                            cout << "Error - hash list file can't be opened." << endl;
                             return 0;
                         }
                         break;
@@ -284,9 +295,9 @@ int main(int argc, char *argv[]) {
                 return 0;
             }
         } else if (option == option_online) {
-            scan.online = true;
+            scan.method = Scan::method_online;
         } else if (option == option_unreadable) {
-            scan.unreadable = true;
+            scan.printUnreadable = true;
         } else {
             cout << "Wrong usage." << endl;
             return 0;
@@ -295,7 +306,6 @@ int main(int argc, char *argv[]) {
     }
 
     // ensure that the file or directory exists
-
     switch (action) {
         case action_sf:
             if (!is_regular_file(scan.scanPath)) {
@@ -313,44 +323,37 @@ int main(int argc, char *argv[]) {
     }
 
     // search for files
-
     std::vector<path> filePaths;
-
-    switch (scan.type) {
-        case Scan::type_file:
+    switch (scan.scope) {
+        case Scan::scope_file:
             find_file(filePaths, scan.scanPath);
             break;
-        case Scan::type_directory_linear:
+        case Scan::scope_directory_linear:
             cout << "Searching for files..." << endl;
             find_files_linear(filePaths, scan.scanPath);
             break;
-        case Scan::type_directory_recursive:
+        case Scan::scope_directory_recursive:
             cout << "Searching for files..." << endl;
             find_files_recursive(filePaths, scan.scanPath);
             break;
     }
 
     // directory scan prompt
-
-    if (scan.type == Scan::type_directory_linear || scan.type == Scan::type_directory_recursive) {
-
+    if (scan.scope == Scan::scope_directory_linear || scan.scope == Scan::scope_directory_recursive) {
         if (filePaths.empty()) {
             cout << "Found no files at " << scan.scanPath << endl;
             return 0;
         }
-
         cout << "Found " << filePaths.size() << " files at " << scan.scanPath << endl;
-
+        cout << "Do you want to continue? [Y/n] ";
         string yn;
-        printf("Do you want to continue? [Y/n] ");
         cin >> yn;
         if (yn != "y" && yn != "Y") {
             return 0;
         }
     }
 
-    // begin scan
-
+    // begin the actual scan in the background
     switch (fork()) {
         case -1: {
             printf("Fork error! Scan aborted.");
@@ -359,21 +362,15 @@ int main(int argc, char *argv[]) {
         case 0: {
             prctl(PR_SET_NAME, (unsigned long) "avirscan");
             scan.filePaths = filePaths;
-            scan.hashBasePaths = hashListPaths;
-            scan.outputPaths = outputPaths;
-            scan.quarantineDirPath = quarantineDirPath;
+            scan.hashListPaths = hashListPaths;
+            scan.reportPaths = outputPaths;
+            scan.quarantinePath = quarantineDirPath;
             //scan.quarantineListPath = quarantineListPath;
             Scan::begin(scan);
             return 0;
         }
         default: {
-            cout << "Scan started." << endl;
-            /*
-            cout << "Report file locations:" << endl;
-            for (const path &outputPath : outputPaths) {
-                cout << "  " << outputPath.string() << endl;
-            }
-             */
+            cout << "Scan successfully started." << endl;
         }
     }
 }
