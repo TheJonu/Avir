@@ -77,7 +77,9 @@ void find_files_recursive(std::vector<fs::path> &filePaths, const fs::path &scan
     fs::recursive_directory_iterator end;
     while (it != end) {
         try {
-            if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
+            if (is_regular_file(it->path()))
+                if(it->path().string().find("avir/quarantine") == std::string::npos)
+                    filePaths.push_back(it->path());
             ++it;
         } catch (std::exception &ex) {
             it.no_push();
@@ -92,7 +94,9 @@ void find_files_linear(std::vector<fs::path> &filePaths, const fs::path &scanPat
     fs::directory_iterator end;
     while (it != end) {
         try {
-            if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
+            if (is_regular_file(it->path()))
+                if(it->path().string().find("avir/quarantine") == std::string::npos)
+                    filePaths.push_back(it->path());
             ++it;
         } catch (std::exception &ex) {
             try { ++it; } catch (std::exception &ex) {}
