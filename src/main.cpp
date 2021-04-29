@@ -1,20 +1,22 @@
+#include "scan.h"
+
+#include <sys/prctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
-#include <unistd.h>
 #include <csignal>
-#include <sys/prctl.h>
-#include <boost/filesystem.hpp>
-#include <sys/types.h>
-#include <dirent.h>
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
-#include <sys/stat.h>
 #include <chrono>
-#include "scan.h"
 
-using namespace std;
-using namespace boost::filesystem;
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
 
 enum action {
     action_null, action_sf, action_sl, action_sr, action_show, action_stop
@@ -24,7 +26,7 @@ enum option {
 };
 
 // converts a string to action enum
-action get_action(const string &actionString) {
+action get_action(const std::string &actionString) {
     if (actionString == "-sf") return action_sf;
     else if (actionString == "-sl") return action_sl;
     else if (actionString == "-sr") return action_sr;
@@ -34,7 +36,7 @@ action get_action(const string &actionString) {
 }
 
 // converts a string to option enum
-option get_option(const string &optionString) {
+option get_option(const std::string &optionString) {
     if (optionString == "-h") return option_h;
     else if (optionString == "-r") return option_o;
     else if (optionString == "-o") return option_online;
@@ -54,65 +56,65 @@ Scan::scan_scope get_scan_scope(const action &action) {
 
 // prints app usage to the console
 void print_usage() {
-    cout << "Usage: sudo avir [action] [options]" << endl;
-    cout << " Scan actions" << endl;
-    cout << "   -sf <path>      scan a single file" << endl;
-    cout << "   -sl <path>      scan a directory linearly" << endl;
-    cout << "   -sr <path>      scan a directory recursively" << endl;
-    cout << " Other actions" << endl;
-    cout << "   --show          show last scan report" << endl;
-    cout << "   --stop          stop all ongoing scans" << endl;
-    cout << " Scan options" << endl;
-    cout << "   -h <path>       specify an additional hash list file" << endl;
-    cout << "   -r <path>       specify an additional report file" << endl;
-    cout << "   -o, --online    check hashes online instead of locally" << endl;
-    cout << "   -u, --unread    list unreadable files in report" << endl;
+    std::cout << "Usage: sudo avir [action] [options]" << std::endl;
+    std::cout << " Scan actions" << std::endl;
+    std::cout << "   -sf <path>      scan a single file" << std::endl;
+    std::cout << "   -sl <path>      scan a directory linearly" << std::endl;
+    std::cout << "   -sr <path>      scan a directory recursively" << std::endl;
+    std::cout << " Other actions" << std::endl;
+    std::cout << "   --show          show last scan report" << std::endl;
+    std::cout << "   --stop          stop all ongoing scans" << std::endl;
+    std::cout << " Scan options" << std::endl;
+    std::cout << "   -h <path>       specify an additional hash list file" << std::endl;
+    std::cout << "   -r <path>       specify an additional report file" << std::endl;
+    std::cout << "   -o, --online    check hashes online instead of locally" << std::endl;
+    std::cout << "   -u, --unread    list unreadable files in report" << std::endl;
 }
 
 // finds files in a directory recursively
-void find_files_recursive(vector<path> &filePaths, const path &scanPath) {
-    recursive_directory_iterator it = recursive_directory_iterator(scanPath);
-    recursive_directory_iterator end;
+void find_files_recursive(std::vector<fs::path> &filePaths, const fs::path &scanPath) {
+    fs::recursive_directory_iterator it = fs::recursive_directory_iterator(scanPath);
+    fs::recursive_directory_iterator end;
     while (it != end) {
         try {
             if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
             ++it;
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             it.no_push();
-            try { ++it; } catch (exception &ex) {}
+            try { ++it; } catch (std::exception &ex) {}
         }
     }
 }
 
 //finds files in a directory linearly
-void find_files_linear(vector<path> &filePaths, const path &scanPath) {
-    directory_iterator it = directory_iterator(scanPath);
-    directory_iterator end;
+void find_files_linear(std::vector<fs::path> &filePaths, const fs::path &scanPath) {
+    fs::directory_iterator it = fs::directory_iterator(scanPath);
+    fs::directory_iterator end;
     while (it != end) {
         try {
             if (is_regular_file(it->path())) { filePaths.push_back(it->path()); };
             ++it;
-        } catch (exception &ex) {
-            try { ++it; } catch (exception &ex) {}
+        } catch (std::exception &ex) {
+            try { ++it; } catch (std::exception &ex) {}
         }
     }
 }
 
 // finds a single file
-void find_file(vector<path> &filePaths, const path &scanPath) {
+void find_file(std::vector<fs::path> &filePaths, const fs::path &scanPath) {
     if (is_regular_file(scanPath)) {
         filePaths.push_back(scanPath);
     }
 }
 
 // shows the last generated report
-void show_last_report(const path &directoryPath) {
+void show_last_report(const fs::path &directoryPath) {
     // determine which report is the latest based on its number
     int bestNumber = 0;
-    string bestPath;
-    for (const auto &resultFile : directory_iterator(directoryPath)) {
-        string path = resultFile.path().string();
-        string numberString = path.substr(path.find_last_of('_') + 1, 10);
+    std::string bestPath;
+    for (const auto &resultFile : fs::directory_iterator(directoryPath)) {
+        std::string path = resultFile.path().string();
+        std::string numberString = path.substr(path.find_last_of('_') + 1, 10);
         int number = stoi(numberString);
         if (number > bestNumber) {
             bestNumber = number;
@@ -121,22 +123,22 @@ void show_last_report(const path &directoryPath) {
     }
     // print the contents if found
     if (bestNumber != 0) {
-        cout << "Showing result nr " << bestNumber << ":" << endl;
-        cout << endl;
+        std::cout << "Showing result nr " << bestNumber << ":" << std::endl;
+        std::cout << std::endl;
         std::ifstream file(bestPath);
         if (file.is_open())
-            cout << file.rdbuf();
+            std::cout << file.rdbuf();
         else {
-            cout << "Can't open the file." << endl;
+            std::cout << "Can't open the file." << std::endl;
         }
     } else {
-        cout << "No result files found." << endl;
+        std::cout << "No result files found." << std::endl;
     }
 }
 
 // gets a PID by its (original) name
 // "borrowed" code, can't find the source now :(
-int getProcIdByName(const string &procName) {
+int getProcIdByName(const std::string &procName) {
     int pid = -1;
     // Open the /proc directory
     DIR *dp = opendir("/proc");
@@ -148,18 +150,18 @@ int getProcIdByName(const string &procName) {
             int id = atoi(dirp->d_name);
             if (id > 0) {
                 // Read contents of virtual /proc/{pid}/cmdline file
-                string cmdPath = string("/proc/") + dirp->d_name + "/cmdline";
+                std::string cmdPath = std::string("/proc/") + dirp->d_name + "/cmdline";
                 std::ifstream cmdFile(cmdPath.c_str());
-                string cmdLine;
+                std::string cmdLine;
                 getline(cmdFile, cmdLine);
                 if (!cmdLine.empty()) {
                     // Keep first cmdline item which contains the program path
                     size_t pos = cmdLine.find('\0');
-                    if (pos != string::npos)
+                    if (pos != std::string::npos)
                         cmdLine = cmdLine.substr(0, pos);
                     // Keep program name only, removing the path
                     pos = cmdLine.rfind('/');
-                    if (pos != string::npos)
+                    if (pos != std::string::npos)
                         cmdLine = cmdLine.substr(pos + 1);
                     // Compare against requested process name
                     if (procName == cmdLine)
@@ -178,17 +180,17 @@ void stop_ongoing_scans() {
     auto scanPid = getProcIdByName("avir");
     // break if no process found
     if (scanPid == 0 || scanPid == thisPid) {
-        cout << "No Avir processes found." << endl;
+        std::cout << "No Avir processes found." << std::endl;
         return;
     }
     // try to kill all processes
     while (scanPid != 0 && scanPid != thisPid) {
         uint result = kill(scanPid, SIGTERM);
         if (result == 0) {
-            cout << "Successfully terminated Avir scan with PID " + to_string(scanPid) + "." << endl;
+            std::cout << "Successfully terminated Avir scan with PID " + std::to_string(scanPid) + "." << std::endl;
             scanPid = getProcIdByName("avir");
         } else {
-            cout << "Process " + to_string(scanPid) + " couldn't be stopped." << endl;
+            std::cout << "Process " + std::to_string(scanPid) + " couldn't be stopped." << std::endl;
             scanPid = 0;
         }
     }
@@ -196,40 +198,46 @@ void stop_ongoing_scans() {
 
 int main(int argc, char *argv[]) {
 
+    // print usage if no arguments are given
+    if (argc == 1) {
+        print_usage();
+        exit(0);
+    }
+
     // check if root access
     if (geteuid()) {
-        cout << "You must run Avir as root." << endl;
+        std::cout << "You must run Avir as root." << std::endl;
         exit(1);
     }
 
     // get current time
-    auto start = chrono::system_clock::now();
-    time_t start_time = chrono::system_clock::to_time_t(start);
+    auto start = std::chrono::system_clock::now();
+    time_t start_time = std::chrono::system_clock::to_time_t(start);
 
     // create a base directory if it doesn't exist
-    string avirString = "/avir";
-    create_directories(avirString);
+    std::string avirString = "/avir";
+    fs::create_directories(avirString);
 
     // create a hash list file if it doesn't exist and add its path
-    path hashListPath = avirString + "/hashlist.txt";
+    fs::path hashListPath = avirString + "/hashlist.txt";
     if (!exists(hashListPath)) std::ofstream o(hashListPath.string());
-    vector<path> hashListPaths;
+    std::vector<fs::path> hashListPaths;
     hashListPaths.push_back(hashListPath);
 
     // create reports directory if it doesn't exist
-    string resultsString = avirString + "/reports";
-    create_directories(resultsString);
-    path resultsPath = canonical(resultsString);
+    std::string resultsString = avirString + "/reports";
+    fs::create_directories(resultsString);
+    fs::path resultsPath = fs::canonical(resultsString);
 
     // add the default report file path
-    path defaultOutputPath = resultsString + "/avir_" + to_string(start_time) + ".txt";
-    vector<path> outputPaths;
+    fs::path defaultOutputPath = resultsString + "/avir_" + std::to_string(start_time) + ".txt";
+    std::vector<fs::path> outputPaths;
     outputPaths.push_back(defaultOutputPath);
 
     // create a quarantine directory if it doesn't exist
-    string quarantineDirString = avirString + "/quarantine";
-    create_directories(quarantineDirString);
-    path quarantineDirPath = canonical(quarantineDirString);
+    std::string quarantineDirString = avirString + "/quarantine";
+    fs::create_directories(quarantineDirString);
+    fs::path quarantineDirPath = fs::canonical(quarantineDirString);
 
     // modify quarantine directory permission rules
     chmod(quarantineDirString.c_str(), S_IREAD | S_IWRITE);
@@ -237,12 +245,6 @@ int main(int argc, char *argv[]) {
     // create quarantine list file if it doesn't exist
     //string quarantineListString = avirString + "/quarantine.txt";
     //path quarantineListPath = canonical(quarantineListString);
-
-    // print usage if no arguments are given
-    if (argc == 1) {
-        print_usage();
-        exit(0);
-    }
 
     // prepare
     Scan::scan scan = {};
@@ -252,9 +254,9 @@ int main(int argc, char *argv[]) {
     // determine action argument
     action action = get_action(argv[1]);
     if (argc >= 3 && (action == action_sf || action == action_sl || action == action_sr)) {
-        string pathString = argv[2];
+        std::string pathString = argv[2];
         scan.scope = get_scan_scope(action);
-        scan.scanPath = canonical(pathString);
+        scan.scanPath = fs::canonical(pathString);
     } else if (action == action_show) {
         show_last_report(resultsPath);
         exit(0);
@@ -262,7 +264,7 @@ int main(int argc, char *argv[]) {
         stop_ongoing_scans();
         exit(0);
     } else {
-        cout << "Wrong usage." << endl;
+        std::cout << "Wrong usage." << std::endl;
         exit(1);
     }
 
@@ -272,14 +274,14 @@ int main(int argc, char *argv[]) {
         if (option == option_h || option == option_o) {
             nextOption++;
             if (argc > nextOption) {
-                string optionPathString = argv[nextOption];
+                std::string optionPathString = argv[nextOption];
                 switch (option) {
                     case option_h: {
                         std::ifstream file{optionPathString};
                         if (access(optionPathString.c_str(), F_OK) != -1) {
-                            hashListPaths.push_back(canonical(optionPathString));
+                            hashListPaths.push_back(fs::canonical(optionPathString));
                         } else {
-                            cout << "Error - hash list file can't be opened." << endl;
+                            std::cout << "Error - hash list file can't be opened." << std::endl;
                             exit(1);
                         }
                         break;
@@ -287,16 +289,16 @@ int main(int argc, char *argv[]) {
                     case option_o: {
                         std::ofstream file{optionPathString};
                         if (access(optionPathString.c_str(), F_OK) != -1) {
-                            outputPaths.push_back(canonical(optionPathString));
+                            outputPaths.push_back(fs::canonical(optionPathString));
                         } else {
-                            cout << "Error - output file can't be opened." << endl;
+                            std::cout << "Error - output file can't be opened." << std::endl;
                             exit(1);
                         }
                         break;
                     }
                 }
             } else {
-                cout << "Wrong usage." << endl;
+                std::cout << "Wrong usage." << std::endl;
                 exit(1);
             }
         } else if (option == option_online) {
@@ -304,7 +306,7 @@ int main(int argc, char *argv[]) {
         } else if (option == option_unreadable) {
             scan.printUnreadable = true;
         } else {
-            cout << "Wrong usage." << endl;
+            std::cout << "Wrong usage." << std::endl;
             exit(1);
         }
         nextOption++;
@@ -314,31 +316,31 @@ int main(int argc, char *argv[]) {
     switch (action) {
         case action_sf:
             if (!is_regular_file(scan.scanPath)) {
-                cout << "That's not a file." << endl;
+                std::cout << "That's not a file." << std::endl;
                 exit(1);
             };
             break;
         case action_sl:
         case action_sr:
             if (!is_directory(scan.scanPath)) {
-                cout << "That's not a directory." << endl;
+                std::cout << "That's not a directory." << std::endl;
                 exit(1);
             }
             break;
     }
 
     // search for files
-    std::vector<path> filePaths;
+    std::vector<fs::path> filePaths;
     switch (scan.scope) {
         case Scan::scope_file:
             find_file(filePaths, scan.scanPath);
             break;
         case Scan::scope_directory_linear:
-            cout << "Searching for files..." << endl;
+            std::cout << "Searching for files..." << std::endl;
             find_files_linear(filePaths, scan.scanPath);
             break;
         case Scan::scope_directory_recursive:
-            cout << "Searching for files..." << endl;
+            std::cout << "Searching for files..." << std::endl;
             find_files_recursive(filePaths, scan.scanPath);
             break;
     }
@@ -346,13 +348,13 @@ int main(int argc, char *argv[]) {
     // directory scan prompt
     if (scan.scope == Scan::scope_directory_linear || scan.scope == Scan::scope_directory_recursive) {
         if (filePaths.empty()) {
-            cout << "Found no files at " << scan.scanPath << endl;
+            std::cout << "Found no files at " << scan.scanPath << std::endl;
             exit(0);
         }
-        cout << "Found " << filePaths.size() << " files at " << scan.scanPath << endl;
-        cout << "Do you want to continue? [Y/n] ";
-        string yn;
-        cin >> yn;
+        std::cout << "Found " << filePaths.size() << " files at " << scan.scanPath << std::endl;
+        std::cout << "Do you want to continue? [Y/n] ";
+        std::string yn;
+        std::cin >> yn;
         if (yn != "y" && yn != "Y") {
             exit(0);
         }
@@ -375,7 +377,7 @@ int main(int argc, char *argv[]) {
             exit(0);
         }
         default: {
-            cout << "Scan successfully started." << endl;
+            std::cout << "Scan successfully started." << std::endl;
         }
     }
 }
