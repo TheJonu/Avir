@@ -256,7 +256,13 @@ int main(int argc, char *argv[]) {
     if (argc >= 3 && (action == action_sf || action == action_sl || action == action_sr)) {
         std::string pathString = argv[2];
         scan.scope = get_scan_scope(action);
-        scan.scanPath = fs::canonical(pathString);
+        try {
+            scan.scanPath = fs::canonical(pathString);
+        } catch (const std::exception&) {
+            std::cout << "Wrong scan path. File or directory does not exist." << std::endl;
+            exit(1);
+        }
+
     } else if (action == action_show) {
         show_last_report(resultsPath);
         exit(0);

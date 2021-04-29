@@ -167,8 +167,8 @@ namespace Scan {
         resultStringStream << "Status: \t" << get_scan_status_string(scan) << std::endl;
         resultStringStream << " --- " << std::endl;
         resultStringStream << "Scan path: \t" << scan.scanPath.string() << std::endl;
-        resultStringStream << "Scan type: \t" << get_scan_scope_string(scan.scope) << std::endl;
-        resultStringStream << "Hash source: \t" << get_scan_method_string(scan.method) << std::endl;
+        resultStringStream << "Scan scope: \t" << get_scan_scope_string(scan.scope) << std::endl;
+        resultStringStream << "Scan method: \t" << get_scan_method_string(scan.method) << std::endl;
         resultStringStream << " --- " << std::endl;
         resultStringStream << "File count: \t" << scan.results.size() << std::endl;
         resultStringStream << "  Unsafe: \t" << scan.unsafeResults.size() << std::endl;
@@ -244,7 +244,7 @@ namespace Scan {
         scan.results.reserve(scan.filePaths.size());
         auto lastNow = std::chrono::system_clock::now();
         std::chrono::duration<double> timeSinceSave{};
-        double saveInterval = 1;
+        double saveInterval = 2;
 
         // scan online if this method was chosen
         if(scan.method == method_online){
