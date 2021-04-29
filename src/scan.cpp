@@ -90,15 +90,9 @@ namespace Scan {
 
     // checks online if the file is safe
     bool check_hash_safety_online(std::string &fileHash) {
-        try {
-            std::string requestStr = "whois -h hash.cymru.com " + fileHash;
-            std::string response = execute(&requestStr[0]);
-            return response.find("NO_DATA") != std::string::npos || response.find("not found") != std::string::npos;
-        }
-        catch (const std::exception&){
-            std::cout << "Whois error. Probably not installed." << std::endl;
-            exit(1);
-        }
+        std::string requestStr = "whois -h hash.cymru.com " + fileHash;
+        std::string response = execute(&requestStr[0]);
+        return response.find("NO_DATA") != std::string::npos;
     }
 
     // checks in the local hash list if the file is safe
