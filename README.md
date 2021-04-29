@@ -6,7 +6,7 @@ Malware detection is based on comparison of MD5 file hashes.
 ### Usage
 
 ```
-Usage: sudo avir [action] [options]
+Usage: avir [action] [options]
  Scan actions
    -sf <path>    scan a single file
    -sl <path>    scan a directory linearly
@@ -23,10 +23,11 @@ Usage: sudo avir [action] [options]
 
 ### Installation
 
-Run `./setup.sh`
+Run `./installer.sh`.
 
 ### More info
 
+- You need `sudo` permissions to run Avir.
 - Avir's base directory is `/avir`.
 - The default file containing malware hashes is located at `/avir/hashlist.txt`.
 - You can also specify hash list files at other locations.
