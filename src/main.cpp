@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <sys/stat.h>
+#include <chrono>
 #include "scan.h"
 
 using namespace std;
