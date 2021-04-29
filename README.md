@@ -6,14 +6,14 @@ Malware detection is based on comparison of MD5 file hashes.
 ### Usage
 
 ```
-Usage: avir [action] [options]
+Usage: sudo avir [action] [options]
  Scan actions
-   f <path>      scan a single file
-   l <path>      scan a directory linearly
-   r <path>      scan a directory recursively
+   -sf <path>    scan a single file
+   -sl <path>    scan a directory linearly
+   -sr <path>    scan a directory recursively
  Other actions
-   show          show last scan report
-   stop          stop all ongoing scans
+   --show        show last scan report
+   --stop        stop all ongoing scans
  Scan options
    -h <path>     specify an additional hash list file
    -r <path>     specify an additional output/report file
@@ -37,4 +37,4 @@ Run `./setup.sh`
   [Team Cymru's Malware Hash Registry](https://team-cymru.com/community-services/mhr/)
   to determine if hashes are safe.
   It works asynchronously, requires `whois` and is suggested only for small numbers of files.
-- Unsafe files are put into quarantine at `/avir/quarantine`. This requires `sudo` permissions.
+- Unsafe files are put into quarantine at `/avir/quarantine`.

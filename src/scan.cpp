@@ -198,7 +198,7 @@ namespace Scan {
     }
 
     // does stuff depending on file scan result
-    void react_to_result(scan scan, const file_scan_result& result){
+    void react_to_result(scan& scan, const file_scan_result& result){
         switch (result.state) {
             case state_not_readable:
                 scan.unreadableResults.push_back(result);
@@ -222,6 +222,7 @@ namespace Scan {
 
     // main scan function
     void begin(scan scan) {
+
         // register signal handler
         globalScan = &scan;
         signal(SIGTERM, terminate_signal_handler);

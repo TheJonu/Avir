@@ -24,11 +24,11 @@ enum option {
 
 // converts a string to action enum
 action get_action(const string &actionString) {
-    if (actionString == "f") return action_sf;
-    else if (actionString == "l") return action_sl;
-    else if (actionString == "r") return action_sr;
-    else if (actionString == "show") return action_show;
-    else if (actionString == "stop") return action_stop;
+    if (actionString == "-sf") return action_sf;
+    else if (actionString == "-sl") return action_sl;
+    else if (actionString == "-sr") return action_sr;
+    else if (actionString == "--show") return action_show;
+    else if (actionString == "--stop") return action_stop;
     return action_null;
 }
 
@@ -53,14 +53,14 @@ Scan::scan_scope get_scan_scope(const action &action) {
 
 // prints app usage to the console
 void print_usage() {
-    cout << "Usage: avir [action] [options]" << endl;
+    cout << "Usage: sudo avir [action] [options]" << endl;
     cout << " Scan actions" << endl;
-    cout << "   f <path>        scan a single file" << endl;
-    cout << "   l <path>        scan a directory linearly" << endl;
-    cout << "   r <path>        scan a directory recursively" << endl;
+    cout << "   -sf <path>      scan a single file" << endl;
+    cout << "   -sl <path>      scan a directory linearly" << endl;
+    cout << "   -sr <path>      scan a directory recursively" << endl;
     cout << " Other actions" << endl;
-    cout << "   show            show last scan report" << endl;
-    cout << "   stop            stop all ongoing scans" << endl;
+    cout << "   --show          show last scan report" << endl;
+    cout << "   --stop          stop all ongoing scans" << endl;
     cout << " Scan options" << endl;
     cout << "   -h <path>       specify an additional hash list file" << endl;
     cout << "   -r <path>       specify an additional report file" << endl;
@@ -194,14 +194,16 @@ void stop_ongoing_scans() {
 }
 
 int main(int argc, char *argv[]) {
+
+    // check if root access
+    if (geteuid()) {
+        cout << "This program will only work if you run as root." << endl;
+        exit(1);
+    }
+
     // get current time
     auto start = chrono::system_clock::now();
     time_t start_time = chrono::system_clock::to_time_t(start);
-
-    // create home path if it doesn't exist
-    //char const *home = getenv("HOME");
-    //string homeString(home);
-    //string avirString = homeString + "/Avir";
 
     // create a base directory if it doesn't exist
     string avirString = "/avir";
@@ -229,7 +231,7 @@ int main(int argc, char *argv[]) {
     path quarantineDirPath = canonical(quarantineDirString);
 
     // modify quarantine directory permission rules
-    //chmod(quarantineDirString.c_str(), S_IREAD | S_IWRITE);
+    chmod(quarantineDirString.c_str(), S_IREAD | S_IWRITE);
 
     // create quarantine list file if it doesn't exist
     //string quarantineListString = avirString + "/quarantine.txt";
@@ -238,7 +240,7 @@ int main(int argc, char *argv[]) {
     // print usage if no arguments are given
     if (argc == 1) {
         print_usage();
-        return 0;
+        exit(0);
     }
 
     // prepare
@@ -254,13 +256,13 @@ int main(int argc, char *argv[]) {
         scan.scanPath = canonical(pathString);
     } else if (action == action_show) {
         show_last_report(resultsPath);
-        return 0;
+        exit(0);
     } else if (action == action_stop) {
         stop_ongoing_scans();
-        return 0;
+        exit(0);
     } else {
         cout << "Wrong usage." << endl;
-        return 0;
+        exit(1);
     }
 
     // determine option arguments
@@ -277,7 +279,7 @@ int main(int argc, char *argv[]) {
                             hashListPaths.push_back(canonical(optionPathString));
                         } else {
                             cout << "Error - hash list file can't be opened." << endl;
-                            return 0;
+                            exit(1);
                         }
                         break;
                     }
@@ -287,14 +289,14 @@ int main(int argc, char *argv[]) {
                             outputPaths.push_back(canonical(optionPathString));
                         } else {
                             cout << "Error - output file can't be opened." << endl;
-                            return 0;
+                            exit(1);
                         }
                         break;
                     }
                 }
             } else {
                 cout << "Wrong usage." << endl;
-                return 0;
+                exit(1);
             }
         } else if (option == option_online) {
             scan.method = Scan::method_online;
@@ -302,7 +304,7 @@ int main(int argc, char *argv[]) {
             scan.printUnreadable = true;
         } else {
             cout << "Wrong usage." << endl;
-            return 0;
+            exit(1);
         }
         nextOption++;
     }
@@ -312,14 +314,14 @@ int main(int argc, char *argv[]) {
         case action_sf:
             if (!is_regular_file(scan.scanPath)) {
                 cout << "That's not a file." << endl;
-                return 0;
+                exit(1);
             };
             break;
         case action_sl:
         case action_sr:
             if (!is_directory(scan.scanPath)) {
                 cout << "That's not a directory." << endl;
-                return 0;
+                exit(1);
             }
             break;
     }
@@ -344,14 +346,14 @@ int main(int argc, char *argv[]) {
     if (scan.scope == Scan::scope_directory_linear || scan.scope == Scan::scope_directory_recursive) {
         if (filePaths.empty()) {
             cout << "Found no files at " << scan.scanPath << endl;
-            return 0;
+            exit(0);
         }
         cout << "Found " << filePaths.size() << " files at " << scan.scanPath << endl;
         cout << "Do you want to continue? [Y/n] ";
         string yn;
         cin >> yn;
         if (yn != "y" && yn != "Y") {
-            return 0;
+            exit(0);
         }
     }
 
@@ -359,7 +361,7 @@ int main(int argc, char *argv[]) {
     switch (fork()) {
         case -1: {
             printf("Fork error! Scan aborted.");
-            return -1;
+            exit(1);
         }
         case 0: {
             prctl(PR_SET_NAME, (unsigned long) "avirscan");
@@ -369,7 +371,7 @@ int main(int argc, char *argv[]) {
             scan.quarantinePath = quarantineDirPath;
             //scan.quarantineListPath = quarantineListPath;
             Scan::begin(scan);
-            return 0;
+            exit(0);
         }
         default: {
             cout << "Scan successfully started." << endl;
