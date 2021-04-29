@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
 
     // check if root access
     if (geteuid()) {
-        cout << "This program will only work if you run as root." << endl;
+        cout << "You must run Avir as root." << endl;
         exit(1);
     }
 

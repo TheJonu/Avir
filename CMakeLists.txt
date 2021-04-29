@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.13)
 project(avir)
 
 set(CMAKE_CXX_STANDARD 14)
-
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_INSTALL_PREFIX /usr/local)
 
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 set(Boost_USE_STATIC_LIBS   ON)
