@@ -93,7 +93,7 @@ namespace Scan {
         try {
             std::string requestStr = "whois -h hash.cymru.com " + fileHash;
             std::string response = execute(&requestStr[0]);
-            return response.find("NO_DATA") != std::string::npos;
+            return response.find("NO_DATA") != std::string::npos || response.find("not found") != std::string::npos;
         }
         catch (const std::exception&){
             std::cout << "Whois error. Probably not installed." << std::endl;
